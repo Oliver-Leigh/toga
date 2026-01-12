@@ -101,6 +101,21 @@ class Row(Generic[T]):
                 self._source.notify("change", item=self)
 
 
+def row_value(row: Row, accessor: str, missing_value):
+    value = getattr(row, accessor, missing_value)
+    
+    if isinstance(value, tuple):
+        if len(value)!=2:
+            raise ValueError(
+                "Tables only support tuples of length 2 as an (icon,value) pair."
+            )
+        return value[1]
+    elif value is None:
+        return missing_value
+    
+    return value
+
+
 class ListSource(Source):
     _data: list[Row]
 
@@ -258,3 +273,64 @@ class ListSource(Source):
                 raise
             else:
                 return default
+
+    def _row_values(self, row: Row, missing_value):
+        values: dict = {}
+        for accessor in self._accessors:
+            values[accessor] = row_value(row, accessor, missing_value)
+        return values
+
+    def _sortable_columns(self, missing_value) -> dict[int,bool]:
+        num_accessors = len(self._accessors)
+        assert num_accessors > 0
+        
+        sortable_columns = dict.fromkeys(range(num_accessors), True)
+        first_row_values = self._row_values(self._data[0], missing_value)
+
+        for row in self._data:
+            row_values = self._row_values(row, missing_value)
+            
+            for ind, accessor in enumerate(self._accessors):
+
+                value_0 = first_row_values[accessor]
+                value   = row_values[accessor]
+    
+                try: 
+                    if value_0>value and value_0<value:
+                        pass
+                except TypeError:
+                    sortable_columns[ind] = False
+            
+            if not any(sortable_columns.values()):
+                break
+        
+        return sortable_columns
+    
+    def sort(self, missing_value, sort_index: int, sort_desc: bool):
+        num_accessors = len(self._accessors)
+        assert num_accessors > 0
+        assert sort_index > -1 and sort_index < num_accessors
+        
+        sortable_columns = self._sortable_columns(missing_value)
+        accessor_order = list(range(num_accessors))
+
+        accessor_order.remove(sort_index)
+        accessor_order.insert(0, sort_index)
+
+        def make_sortable(value: object, is_sortable: bool):
+            if is_sortable:
+                return value
+            else:
+                return str(value)
+            
+        def key_value(row: Row, ind: int, missing_value):
+            return  make_sortable(
+                        row_value(row, self._accessors[ind], missing_value),
+                        sortable_columns[ind]
+                    )
+        
+        def sort_key(row: Row):
+            return [ key_value(row, ind, missing_value) for ind in accessor_order ]
+        
+        self._data.sort(key=sort_key, reverse=sort_desc)
+

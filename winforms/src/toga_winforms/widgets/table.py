@@ -7,6 +7,37 @@ from toga.handlers import WeakrefCallable
 
 from .base import Widget
 
+from ctypes import byref, c_void_p, Structure as c_Structure, windll, wintypes
+
+
+################################################
+# Used for sort headings
+################################################
+HDI_FORMAT: int     = 0x0004
+HDF_SORTUP: int     = 0x0400
+HDF_SORTDOWN: int   = 0x0200
+LVM_GETHEADER: int  = 0x1000 + 31
+HDM_GETITEM: int    = 0x1200 + 11
+HDM_SETITEM: int    = 0x1200 + 12
+
+class HDITEM(c_Structure):
+    _fields_ = [
+        ("mask", wintypes.UINT),
+        ("cxy", wintypes.INT),
+        ("pszText", wintypes.LPWSTR),
+        ("hbm", wintypes.HBITMAP),
+        ("cchTextMax", wintypes.INT),
+        ("fmt", wintypes.INT),
+        ("lParam", wintypes.LPARAM),
+        ("iImage", wintypes.INT),
+        ("iOrder", wintypes.INT),
+        ("type", wintypes.UINT),
+        ("pvFilter", c_void_p),
+        ("state", wintypes.UINT),
+    ]
+
+################################################
+
 
 class Table(Widget):
     # The following methods are overridden in DetailedList.
@@ -25,6 +56,10 @@ class Table(Widget):
     @property
     def _data(self):
         return self.interface.data
+    
+    @property
+    def _header_sorting(self):
+        return self.interface.header_sorting
 
     def create(self):
         self.native = WinForms.ListView()
@@ -34,11 +69,16 @@ class Table(Widget):
         self._pending_resize = True
 
         headings = self._headings
-        self.native.HeaderStyle = (
-            getattr(WinForms.ColumnHeaderStyle, "None")
-            if headings is None
-            else WinForms.ColumnHeaderStyle.Nonclickable
-        )
+        if headings is None:
+            self.native.HeaderStyle = getattr(WinForms.ColumnHeaderStyle, "None")
+        elif not self._header_sorting: 
+            self.native.HeaderStyle = WinForms.ColumnHeaderStyle.Nonclickable
+        else: 
+            self.native.HeaderStyle = WinForms.ColumnHeaderStyle.Clickable
+
+            self.native.ColumnClick += WeakrefCallable(
+                self.winforms_column_click 
+            )
 
         dataColumn = []
         for i, accessor in enumerate(self._accessors):
@@ -180,6 +220,49 @@ class Table(Widget):
             # that isn't guaranteed by the documentation.
             pass
 
+    def winforms_column_click(self, sender, event): 
+        self.interface.sort_by_column(event.Column)
+
+    def implement_sort(self, old_column: int | None):
+        self.update_data()
+        self.update_sort_icons(old_column)
+        #self.interface.scroll_to_row()
+
+    def update_sort_icons(self, old_column: int | None):
+        column: int | None = self.interface.sort_column
+        sort_desc: bool = self.interface.sort_desc
+
+        SendMessageW = windll.user32.SendMessageW
+        
+        table_handle = int(self.native.Handle.ToString())
+        header_handle = SendMessageW(table_handle, LVM_GETHEADER, 0, 0) 
+        
+        # hd_item will store the win32 data for the column headings.
+        hd_item = HDITEM()
+        hd_item.mask = HDI_FORMAT
+    
+        # Clear sort icons the from the old column.
+        if old_column is not None:
+            # This SendMessageW call stores the old column heading in hd_item. 
+            SendMessageW(header_handle, HDM_GETITEM, old_column, byref(hd_item))
+            
+            hd_item.fmt = hd_item.fmt & ~HDF_SORTUP & ~HDF_SORTDOWN
+
+            # This SendMessageW call sends the updated hd_item data for the old column. 
+            SendMessageW(header_handle, HDM_SETITEM, old_column, byref(hd_item))
+        
+        if column is not None:
+            # This SendMessageW call stores the new column heading in hd_item. 
+            SendMessageW(header_handle, HDM_GETITEM, column, byref(hd_item))
+
+            if sort_desc:
+                hd_item.fmt = hd_item.fmt | HDF_SORTDOWN
+            else: 
+                hd_item.fmt = hd_item.fmt | HDF_SORTUP
+            
+            # This SendMessageW call sends the updated hd_item data for the new column.
+            SendMessageW(header_handle, HDM_SETITEM, column, byref(hd_item))
+
     def _create_column(self, heading, accessor):
         col = WinForms.ColumnHeader()
         col.Text = heading
@@ -255,6 +338,7 @@ class Table(Widget):
     def update_data(self):
         self.native.VirtualListSize = len(self._data)
         self._cache = []
+        self.native.Refresh()
 
     def insert(self, index, item):
         self.update_data()
@@ -266,7 +350,7 @@ class Table(Widget):
         self.update_data()
 
     def clear(self):
-        self.update_data()
+        self.interface.sort_by_column(None)
 
     def get_selection(self):
         selected_indices = list(self.native.SelectedIndices)
@@ -276,6 +360,25 @@ class Table(Widget):
             return None
         else:
             return selected_indices[0]
+        
+    def set_selection(self, selected_indices: set[int]):
+        # Unselect the current selection.
+        for index in self.get_selection():
+            self.native.Items[index].Selected = False
+        
+        # Select the new selection.
+        for index in selected_indices:
+            if index < 0 or index >= len(self._data):
+                raise ValueError(
+                    "Selected indices must be greater than 0 and less than \
+                    or equal to the number of rows."
+                )
+            else: 
+                self.native.Items[index].Selected = True
+
+        if self.native.FocusedItem is not None:
+            self.native.FocusedItem.Focused = False
+        
 
     def scroll_to_row(self, index):
         self.native.EnsureVisible(index)

@@ -42,6 +42,9 @@ class Table(Widget):
         on_select: toga.widgets.table.OnSelectHandler | None = None,
         on_activate: toga.widgets.table.OnActivateHandler | None = None,
         missing_value: str = "",
+        header_sorting: bool = False,
+        initial_sort_column: int | str | None = None,
+        initial_sort_desc: bool = False,
         **kwargs,
     ):
         """Create a new Table widget.
@@ -73,11 +76,28 @@ class Table(Widget):
         :param missing_value: The string that will be used to populate a cell when the
             value provided by its accessor is [`None`][], or the accessor isn't
             defined.
+        :param header_sorting: When True the table can be sorted by clicking on a column 
+            heading. Default value is false. 
+        :param initial_sort_column: The column (either index or accessor) by which the 
+            table should be initially sorted by. A value of None will mean the table is 
+            not sorted initially. Default value is None. 
+        :param initial_sort_desc: A boolean to determine whether the initial sorting of 
+            the table is ascending or descending. Default value is False. 
         :param kwargs: Initial style properties.
         """
         self._headings: list[str] | None
         self._accessors: list[str]
         self._data: ListSourceT | ListSource
+        
+        self._header_sorting: bool
+        self._sort_column: int | None
+        self._sort_desc: bool
+
+        if header_sorting and headings is None:
+            raise ValueError(
+                "Cannot create a table with header_sorting=True and no headings."
+            )
+        self._header_sorting = header_sorting
 
         if headings is not None:
             self._headings = [heading.split("\n")[0] for heading in headings]
@@ -89,6 +109,9 @@ class Table(Widget):
             raise ValueError(
                 "Cannot create a table without either headings or accessors"
             )
+
+        self._sort_column = self._parse_sort_column(initial_sort_column)
+        self._sort_desc = initial_sort_desc
 
         self._multiple_select = multiple_select
         self._missing_value = missing_value or ""
@@ -148,6 +171,9 @@ class Table(Widget):
             self._data = data
         else:
             self._data = ListSource(accessors=self._accessors, data=data)
+
+        if self.sort_column is not None:
+            self._data.sort( self.missing_value, self.sort_column, self.sort_desc )
 
         self._data.add_listener(self._impl)
         self._impl.change_source(source=self._data)
@@ -278,11 +304,67 @@ class Table(Widget):
             else:
                 index = column
 
+        if index == self.sort_column:
+            self._sort_column = None
+
         # Remove column
         if self._headings is not None:
             del self._headings[index]
         del self._accessors[index]
         self._impl.remove_column(index)
+
+    def _parse_sort_column(self, column: int | str | None) -> int | None:
+        if column is None:
+            return column
+        elif column in list(range(len(self._accessors))):
+            return column
+        elif column in self._accessors:
+            return self._accessors.index(column)
+        else:
+            raise ValueError(
+                "A column for sorting is one of: i) None, ii) an accessor,\
+                ii) an a non-negative integer that is less than the number\
+                of columns/accessors."
+            )
+
+    def sort_by_column(self, column: int | str | None):
+        """Sort the table by a column. If the
+        
+        :param column: The index of, or the accessor of, the column that will
+            be used to sort the table. 
+        """
+        old_column = self._sort_column
+
+        if column is None or len(self.data) < 1:
+            self._sort_desc = False
+            self._sort_column = None
+        else:
+            column    = self._parse_sort_column(column)        
+            sort_desc = self._sort_desc
+
+            if column == old_column:
+                sort_desc = not sort_desc
+                self._sort_desc = sort_desc
+            else:
+                self._sort_desc = False
+                self._sort_column = column
+
+            if len(self.selection) == 1:
+                selected_row = self.selection[0]
+            else:
+                selected_row = None
+
+            self.data.sort( self._missing_value, column, sort_desc )
+
+            if selected_row is not None:
+                selected_row_index = self._data.index(selected_row)
+                self.scroll_to_row(selected_row_index)
+                self._impl.set_selection({selected_row_index})
+            else:
+                self._impl.set_selection({})
+
+        self._impl.implement_sort(old_column)
+        
 
     @property
     def headings(self) -> list[str] | None:
@@ -302,3 +384,34 @@ class Table(Widget):
         attribute.
         """
         return self._missing_value
+    
+    @property
+    def header_sorting(self) -> bool:
+        """When True the table can be sorted by clicking on a column heading. Sorting
+        works as follows:
+            - Columns with a single data type that is sortable, will be sorted in the 
+            usual way.
+            - Columns with mixed data types (including type of missing_value where
+            appropriate) or unsortable data types will be converted to strings.
+            - Columns containing tuples (i.e. an (icon,value) pair) will be treated as 
+            the second entry only (i.e. the value). 
+        
+        :rtype: str | None
+        """
+        return self._header_sorting
+    
+    @property
+    def sort_column(self) -> int | None:
+        """Returns the current accessor that the table is sorted by. 
+        
+        :rtype: str | None
+        """
+        return self._sort_column
+    
+    @property
+    def sort_desc(self) -> bool:
+        """Returns the whether the current sorting is descending. 
+        
+        :rtype: bool
+        """
+        return self._sort_desc

@@ -10,6 +10,8 @@ class TableApp(toga.App):
         red = toga.Icon("icons/red")
         green = toga.Icon("icons/green")
 
+        def bee_function(): return "Bee"
+
         # Include some non-string objects to make sure conversion works correctly.
         self.bee_movies = [
             ((yak, "The Secret Life of Bees"), 2008, (green, 7.3), "Drama"),
@@ -19,7 +21,10 @@ class TableApp(toga.App):
             ((None, "Birds Do It, Bees Do It"), 1974, (green, 7.3), "Documentary"),
             ((None, "Bees: A Life for the Queen"), 1998, (green, 8.0), "TV Movie"),
             ((None, "Bees in Paradise"), 1944, (red, 5.4), None),  # None genre
+            ((None, "Bees in Paradise"), 1999, (green, 9.4), None),  # None genre, different year
+            ((None, "Bees in Paradise"), 1999, (green, 9.4), "Action"),  # Different genre, different year
             ((yak, "Keeper of the Bees"), 1947, (red, 6.3), "Drama"),
+            ((None, "Bee Function"), 2005, (red, bee_function), "Function"), # Rating is a function
         ]
         self.initial_data = self.bee_movies * 10
 
@@ -115,6 +120,8 @@ class TableApp(toga.App):
             on_select=self.on_select_handler,
             on_activate=self.on_activate,
             missing_value="Unknown",
+            header_sorting=True,
+            #initial_sort_column=2,
         )
 
         # Buttons
