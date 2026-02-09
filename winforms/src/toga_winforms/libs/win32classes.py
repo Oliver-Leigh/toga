@@ -6,8 +6,6 @@ from ctypes import (
 )
 from ctypes.wintypes import HWND, INT, LPARAM, LPWSTR, UINT, WPARAM
 
-
-
 LRESULT = LPARAM  # LPARAM is essentially equivalent to LRESULT
 UINT_PTR = c_size_t
 DWORD_PTR = c_size_t
