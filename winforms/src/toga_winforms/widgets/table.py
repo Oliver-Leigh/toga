@@ -118,6 +118,11 @@ class Table(Widget):
         return self.interface.data
 
     def __del__(self):
+        # The object self.pfn_subclass is a python class and is part of the native
+        # Windows process. When a Table is removed by the python GC, self.pfn_subclass
+        # is also removed and the Windows process has a dangling pointer. Calling
+        # Dispose() here fixes the problem by removing the self.pfn_subclass from the
+        # Windows process.
         self.native.Dispose()
 
     def create(self):
