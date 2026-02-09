@@ -2,6 +2,8 @@ from ctypes import c_void_p, windll, wintypes
 
 from System import Environment
 
+from .win32classes import LRESULT
+
 user32 = windll.user32
 
 
@@ -34,3 +36,10 @@ MONITOR_DEFAULTTONEAREST = 2
 MonitorFromRect = user32.MonitorFromRect
 MonitorFromRect.restype = wintypes.HMONITOR
 MonitorFromRect.argtypes = [wintypes.LPRECT, wintypes.DWORD]
+
+
+# https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-sendmessagew
+SendMessageW = user32.SendMessageW
+SendMessageW.restype = LRESULT
+# The following is incompatible with toga_winforms\widgets\textinput.py:
+# SendMessageW.argtypes=[wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]

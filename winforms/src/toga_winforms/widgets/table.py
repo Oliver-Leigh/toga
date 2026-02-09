@@ -1,102 +1,16 @@
-from ctypes import (
-    POINTER,
-    WINFUNCTYPE,
-    Structure as c_Structure,
-    c_size_t,
-    cast,
-    windll,
-)
-from ctypes.wintypes import HWND, INT, LPARAM, LPWSTR, UINT, WPARAM
+from ctypes import POINTER, cast
+from ctypes.wintypes import HWND, LPARAM, UINT, WPARAM
 from warnings import warn
 
 import System.Windows.Forms as WinForms
 
 from toga.handlers import WeakrefCallable
 
+from ..libs import windowsmessages as wm
+from ..libs.comctl32 import DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass
+from ..libs.user32 import SendMessageW
+from ..libs.win32classes import LRESULT, LVITEMW, NMHDR, NMLVDISPINFOW, SUBCLASSPROC
 from .base import Widget
-
-################################################
-# C classes used with Windows shell functions.
-################################################
-LRESULT = LPARAM  # LPARAM is essentially equivalent to LRESULT
-UINT_PTR = c_size_t
-DWORD_PTR = c_size_t
-
-
-class LVITEMW(c_Structure):
-    _fields_ = [
-        ("uiMask", UINT),
-        ("iItem", INT),
-        ("iSubItem", INT),
-        ("state", UINT),
-        ("stateMask", UINT),
-        ("pszText", LPWSTR),
-        ("cchTextMax", INT),
-        ("iImage", INT),
-        ("lParam", LPARAM),
-        ("iIndent", INT),
-        ("iGroupId", INT),
-        ("cColumns", UINT),
-        ("puColumns", POINTER(UINT)),
-        ("piColFmt", INT),
-        ("iGroup", INT),
-    ]
-
-
-class NMHDR(c_Structure):
-    _fields_ = [
-        ("hwndFrom", HWND),
-        ("idFrom", UINT_PTR),
-        ("code", UINT),
-    ]
-
-
-class NMLVDISPINFOW(c_Structure):
-    _fields_ = [
-        ("hdr", NMHDR),
-        ("item", LVITEMW),
-    ]
-
-
-SUBCLASSPROC = WINFUNCTYPE(
-    # Return type:
-    LRESULT,
-    # Argument types:
-    HWND,
-    UINT,
-    WPARAM,
-    LPARAM,
-    UINT_PTR,
-    DWORD_PTR,
-)
-
-################################################
-# Windows shell functions.
-################################################
-SendMessageW = windll.user32.SendMessageW
-
-DefSubclassProc = windll.comctl32.DefSubclassProc
-SetWindowSubclass = windll.comctl32.SetWindowSubclass
-RemoveWindowSubclass = windll.comctl32.RemoveWindowSubclass
-
-################################################
-# Windows message hex codes.
-################################################
-LVIF_TEXT = 0x0001
-LVIF_IMAGE = 0x0002
-LVIF_STATE = 0x0008
-
-LVM_GETEXTENDEDLISTVIEWSTYLE = 0x1037
-LVM_SETEXTENDEDLISTVIEWSTYLE = 0x1036
-
-LVN_GETDISPINFOW = 0xFFFFFF4F
-
-LVS_EX_SUBITEMIMAGES = 0x2
-
-WM_NCDESTROY = 0x0082
-WM_REFLECT_NOTIFY = 0x204E
-
-################################################
 
 
 class Table(Widget):
@@ -179,10 +93,12 @@ class Table(Widget):
 
         # Use SendMessage over PostMessage since the ListView object is on the same
         # thread as the messaging call.
-        old_style = SendMessageW(list_view_handle, LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0)
-        new_style = old_style | LVS_EX_SUBITEMIMAGES
+        old_style = SendMessageW(
+            list_view_handle, wm.LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0
+        )
+        new_style = old_style | wm.LVS_EX_SUBITEMIMAGES
 
-        SendMessageW(list_view_handle, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, new_style)
+        SendMessageW(list_view_handle, wm.LVM_SETEXTENDEDLISTVIEWSTYLE, 0, new_style)
 
     def handle_created(self, sender, e):
         self._set_subclass()
@@ -208,18 +124,18 @@ class Table(Widget):
     ) -> LRESULT:
         # Remove the window subclass in the way recommended by Raymond Chen here:
         # https://devblogs.microsoft.com/oldnewthing/20031111-00/?p=41883
-        if uMsg == WM_NCDESTROY:
+        if uMsg == wm.WM_NCDESTROY:
             RemoveWindowSubclass(hWnd, self.pfn_subclass, uIdSubclass)
 
-        if uMsg == WM_REFLECT_NOTIFY:
+        if uMsg == wm.WM_REFLECT_NOTIFY:
             phdr = cast(lParam, POINTER(NMHDR)).contents
             code = phdr.code
-            if hex(code) == hex(LVN_GETDISPINFOW):
+            if code == wm.LVN_GETDISPINFOW:
                 disp_info = cast(lParam, POINTER(NMLVDISPINFOW)).contents
                 self._set_subitem_icon(disp_info.item)
 
         # Call the original window procedure
-        return DefSubclassProc(HWND(hWnd), UINT(uMsg), LPARAM(wParam), LPARAM(lParam))
+        return DefSubclassProc(HWND(hWnd), UINT(uMsg), WPARAM(wParam), LPARAM(lParam))
 
     def _set_subitem_icon(self, lvitem: LVITEMW):
         row_index = lvitem.iItem
@@ -228,10 +144,10 @@ class Table(Widget):
         _, icon_indices = self._toga_retrieve_virtual_item(row_index)
 
         # Add the icon property if it doesn't exist.
-        if lvitem.uiMask == (LVIF_TEXT | LVIF_STATE):
-            lvitem.uiMask = LVIF_TEXT | LVIF_STATE | LVIF_IMAGE
+        if lvitem.uiMask == (wm.LVIF_TEXT | wm.LVIF_STATE):
+            lvitem.uiMask = wm.LVIF_TEXT | wm.LVIF_STATE | wm.LVIF_IMAGE
 
-        if lvitem.uiMask & LVIF_IMAGE != 0 and icon_indices[column_index] > -1:
+        if lvitem.uiMask & wm.LVIF_IMAGE != 0 and icon_indices[column_index] > -1:
             lvitem.iImage = icon_indices[column_index]
 
     def add_action_events(self):
