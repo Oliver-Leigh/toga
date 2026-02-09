@@ -73,7 +73,7 @@ SUBCLASSPROC = WINFUNCTYPE(
 ################################################
 # Windows shell functions.
 ################################################
-PostMessageW = windll.user32.PostMessageW
+SendMessageW = windll.user32.SendMessageW
 
 DefSubclassProc = windll.comctl32.DefSubclassProc
 SetWindowSubclass = windll.comctl32.SetWindowSubclass
@@ -177,10 +177,12 @@ class Table(Widget):
     def _enable_multi_icon_style(self):
         list_view_handle = int(self.native.Handle.ToString())
 
-        old_style = PostMessageW(list_view_handle, LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0)
+        # Use SendMessage over PostMessage since the ListView object is on the same
+        # thread as the messaging call.
+        old_style = SendMessageW(list_view_handle, LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0)
         new_style = old_style | LVS_EX_SUBITEMIMAGES
 
-        PostMessageW(list_view_handle, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, new_style)
+        SendMessageW(list_view_handle, LVM_SETEXTENDEDLISTVIEWSTYLE, 0, new_style)
 
     def handle_created(self, sender, e):
         self._set_subclass()
