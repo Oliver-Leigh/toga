@@ -131,6 +131,7 @@ class Table(Widget):
         self._set_subclass()
 
         self.native.HandleCreated += WeakrefCallable(self.handle_created)
+        self.native.HandleDestroyed += WeakrefCallable(self.handle_destroyed)
 
         self.native.View = WinForms.View.Details
         self._enable_multi_icon_style()
@@ -184,8 +185,15 @@ class Table(Widget):
     def handle_created(self, sender, e):
         self._set_subclass()
 
+    def handle_destroyed(self, sender, e):
+        # Remove the subclass when a handle is destroyed to prevent a memory leak.
+        self._remove_subclass()
+
     def _set_subclass(self):
         SetWindowSubclass(int(self.native.Handle.ToString()), self.pfn_subclass, 0, 0)
+
+    def _remove_subclass(self):
+        RemoveWindowSubclass(int(self.native.Handle.ToString()), self.pfn_subclass, 0)
 
     def _subclass_proc(
         self,
