@@ -6,10 +6,11 @@ import System.Windows.Forms as WinForms
 
 from toga.handlers import WeakrefCallable
 
-from ..libs import windowsmessages as wm
+from ..libs import windowconstants as wc
 from ..libs.comctl32 import DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass
+from ..libs.comctl32classes import LVITEMW, NMHDR, NMLVDISPINFOW, SUBCLASSPROC
 from ..libs.user32 import SendMessageW
-from ..libs.win32classes import LRESULT, LVITEMW, NMHDR, NMLVDISPINFOW, SUBCLASSPROC
+from ..libs.win32 import LRESULT
 from .base import Widget
 
 
@@ -94,11 +95,11 @@ class Table(Widget):
         # Use SendMessage over PostMessage since the ListView object is on the same
         # thread as the messaging call.
         old_style = SendMessageW(
-            list_view_handle, wm.LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0
+            list_view_handle, wc.LVM_GETEXTENDEDLISTVIEWSTYLE, 0, 0
         )
-        new_style = old_style | wm.LVS_EX_SUBITEMIMAGES
+        new_style = old_style | wc.LVS_EX_SUBITEMIMAGES
 
-        SendMessageW(list_view_handle, wm.LVM_SETEXTENDEDLISTVIEWSTYLE, 0, new_style)
+        SendMessageW(list_view_handle, wc.LVM_SETEXTENDEDLISTVIEWSTYLE, 0, new_style)
 
     def handle_created(self, sender, e):
         self._set_subclass()
@@ -124,13 +125,13 @@ class Table(Widget):
     ) -> LRESULT:
         # Remove the window subclass in the way recommended by Raymond Chen here:
         # https://devblogs.microsoft.com/oldnewthing/20031111-00/?p=41883
-        if uMsg == wm.WM_NCDESTROY:
+        if uMsg == wc.WM_NCDESTROY:
             RemoveWindowSubclass(hWnd, self.pfn_subclass, uIdSubclass)
 
-        if uMsg == wm.WM_REFLECT_NOTIFY:
+        if uMsg == wc.WM_REFLECT_NOTIFY:
             phdr = cast(lParam, POINTER(NMHDR)).contents
             code = phdr.code
-            if code == wm.LVN_GETDISPINFOW:
+            if code == wc.LVN_GETDISPINFOW:
                 disp_info = cast(lParam, POINTER(NMLVDISPINFOW)).contents
                 self._set_subitem_icon(disp_info.item)
 
@@ -144,10 +145,10 @@ class Table(Widget):
         _, icon_indices = self._toga_retrieve_virtual_item(row_index)
 
         # Add the icon property if it doesn't exist.
-        if lvitem.uiMask == (wm.LVIF_TEXT | wm.LVIF_STATE):
-            lvitem.uiMask = wm.LVIF_TEXT | wm.LVIF_STATE | wm.LVIF_IMAGE
+        if lvitem.uiMask == (wc.LVIF_TEXT | wc.LVIF_STATE):
+            lvitem.uiMask = wc.LVIF_TEXT | wc.LVIF_STATE | wc.LVIF_IMAGE
 
-        if lvitem.uiMask & wm.LVIF_IMAGE != 0 and icon_indices[column_index] > -1:
+        if lvitem.uiMask & wc.LVIF_IMAGE != 0 and icon_indices[column_index] > -1:
             lvitem.iImage = icon_indices[column_index]
 
     def add_action_events(self):

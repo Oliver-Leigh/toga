@@ -1,15 +1,10 @@
 from ctypes import (
-    POINTER,
     WINFUNCTYPE,
     Structure as c_Structure,
-    c_size_t,
 )
 from ctypes.wintypes import HWND, INT, LPARAM, LPWSTR, UINT, WPARAM
 
-LRESULT = LPARAM  # LPARAM is essentially equivalent to LRESULT
-UINT_PTR = c_size_t
-DWORD_PTR = c_size_t
-PUINT = c_size_t
+from .win32 import DWORD_PTR, INT_PTR, LRESULT, PUINT, UINT_PTR
 
 
 # https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-lvitemw
@@ -28,7 +23,7 @@ class LVITEMW(c_Structure):
         ("iGroupId", INT),
         ("cColumns", UINT),
         ("puColumns", PUINT),
-        ("piColFmt", POINTER(UINT)),
+        ("piColFmt", INT_PTR),
         ("iGroup", INT),
     ]
 

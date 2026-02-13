@@ -1,4 +1,7 @@
-# Windows message hex codes.
+# Window constants
+
+# Edit Messages
+EM_SETCUEBANNER = 0x1501
 
 # List-View Item Format
 LVIF_TEXT = 0x0001
