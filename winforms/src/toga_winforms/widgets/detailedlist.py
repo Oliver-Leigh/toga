@@ -26,7 +26,7 @@ from ..libs.user32 import (
     SetWindowPos,
 )
 from ..libs.user32classes import NMHDR, NMLVDISPINFOW, SUBCLASSPROC
-from ..libs.win32 import HIWORD, LONG_PTR, LOWORD, LRESULT, is_submessage
+from ..libs.win32 import HIWORD, is_submessage, LONG_PTR, LOWORD, LRESULT, str_pixels
 from .box import Box
 
 # Columns to adapt DetailedList source to Table.
@@ -68,16 +68,10 @@ class DetailedList(Box):
 
     def create(self):
         super().create()
+        self._box_hwnd = int(self.native.Handle.ToString())
         self._table_source = TableSource(self.interface)
         self._cache: dict[int, tuple] = {}
         self._first_item = 0
-
-        # Box (parent) information (hwnd and coordinates).
-        self._box_hwnd = int(self.native.Handle.ToString())
-        box_rect = RECT()
-        box_width = box_rect.right - box_rect.left
-        box_height = box_rect.bottom - box_rect.top
-        GetWindowRect(self._box_hwnd, byref(box_rect))
 
         # System icon dimensions
         icon_x = GetSystemMetrics(wc.SM_CXICON)
@@ -93,7 +87,7 @@ class DetailedList(Box):
         # Create the ListView object.
         # learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowexw
         initial_style = wc.LVS_OWNERDATA | wc.LVS_SINGLESEL | wc.LVS_REPORT
-        self._box_hwnd = int(self.native.Handle.ToString())
+
         self._hwnd = CreateWindowExW(
             wc.LVS_EX_DOUBLEBUFFER,
             wc.WC_LISTVIEW,
@@ -101,8 +95,8 @@ class DetailedList(Box):
             wc.WS_CHILD | wc.WS_VISIBLE | initial_style,
             0,
             0,
-            box_width,
-            box_height,
+            self._box_dimensions[0],
+            self._box_dimensions[1],
             HWND(self._box_hwnd),
             None,
             None,
@@ -110,9 +104,8 @@ class DetailedList(Box):
         )
 
         # Define tile-size constants
-        self._tile_width = self._get_tile_width(box_width)
         self._tile_height = floor(icon_y * 1.5)
-        self._tile_padding = floor(icon_x * 0.25)
+        tile_padding = floor(icon_x * 0.25)
 
         # Change the view style to tile and configure the properties.
         # learn.microsoft.com/en-us/windows/win32/controls/use-tile-views
@@ -125,9 +118,7 @@ class DetailedList(Box):
         lvitemviewinfo.dwFlags = wc.LVTVIF_FIXEDSIZE
         lvitemviewinfo.sizeTile = SIZE(self._tile_width, self._tile_height)
         lvitemviewinfo.cLines = 1
-        lvitemviewinfo.rcLabelMargin = RECT(
-            self._tile_padding, 0, self._tile_padding, 0
-        )
+        lvitemviewinfo.rcLabelMargin = RECT(tile_padding, 0, tile_padding, 0)
         SendMessageW(self._hwnd, wc.LVM_SETTILEVIEWINFO, 0, byref(lvitemviewinfo))
 
         # Create the image list
@@ -217,14 +208,18 @@ class DetailedList(Box):
             lvitem.iImage = icon_index
 
     def _set_list_view_size(self, width: int, height: int):
-        self._tile_width = self._get_tile_width(width)
-
         lvitemviewinfo = LVTILEVIEWINFO()
         lvitemviewinfo.cbSize = sizeof(lvitemviewinfo)
         lvitemviewinfo.dwMask = wc.LVTVIM_TILESIZE
         lvitemviewinfo.dwFlags = wc.LVTVIF_FIXEDSIZE
         lvitemviewinfo.sizeTile = SIZE(self._tile_width, self._tile_height)
         SendMessageW(self._hwnd, wc.LVM_SETTILEVIEWINFO, 0, byref(lvitemviewinfo))
+
+        # Tile view has a bug where tile sizes can get "stuck". Manually creating
+        # display strings of the correct length and refreshing the list fixes the
+        # problem.
+        self._cache = {}
+        SendMessageW(self._hwnd, wc.LVM_REDRAWITEMS, 0, len(self._data) - 1)
 
         SetWindowPos(
             self._hwnd,
@@ -235,14 +230,24 @@ class DetailedList(Box):
             height,
             wc.SWP_NOMOVE | wc.SWP_NOZORDER | wc.SWP_SHOWWINDOW,
         )
+    
+    @property
+    def _box_dimensions(self):
+        box_rect = RECT()
+        GetWindowRect(self._box_hwnd, byref(box_rect))
+        return (box_rect.right - box_rect.left, box_rect.bottom - box_rect.top)
 
-    def _get_tile_width(self, box_width: int):
-        style = LONG_PTR(GetWindowLongPtrW(self._box_hwnd, wc.GWL_STYLE)).value
-
+    @property
+    def _tile_width(self):
+        style = LONG_PTR(GetWindowLongPtrW(self._hwnd, wc.GWL_STYLE)).value
         if is_submessage(style, wc.WS_VSCROLL):
-            return box_width - GetSystemMetrics(wc.SM_CXVSCROLL)
+            return self._box_dimensions[0] - GetSystemMetrics(wc.SM_CXVSCROLL)
 
-        return box_width
+        return self._box_dimensions[0]
+
+    @property
+    def _tile_text_width(self):
+        return ( self._tile_width - floor(1.7*GetSystemMetrics(wc.SM_CXICON)) )
 
     def _image_index(self, icon):
         images = self._image_list.Images
@@ -252,6 +257,22 @@ class DetailedList(Box):
             index = images.Count
             images.Add(key, icon.bitmap)
         return index
+    
+    def _clip_text(self, text: str) -> str:
+        # cchTextMax is 260, so max string length is 259 + null_terminator.
+        text = " ".join(text.splitlines())[:259]
+        if not text:
+            # ListView will remove rows with empty strings.
+            return " "
+        elif str_pixels(text, self._hwnd) < self._tile_text_width:
+           return text
+        
+        # If the previous conditions are not satisfied, the text must be shortened
+        # and "..." appended. So the max number of characters to check is 256.
+        for i in range(min(256, len(text))):
+            if str_pixels(text[:i] + "...", self._hwnd) > self._tile_text_width:
+                return text[: i - 1] + "..."
+        return text[:256] + "..."
 
     def _new_item(self, index) -> tuple[tuple[str, str], int]:
         item = self._data[index]
@@ -260,7 +281,8 @@ class DetailedList(Box):
 
         new_item = (
             tuple(
-                c_wchar_p(column.text(item, missing_value)) for column in self._columns
+                c_wchar_p(self._clip_text(column.text(item, missing_value)))
+                for column in self._columns
             ),
             -1 if icon is None else self._image_index(icon._impl),
         )
