@@ -1,4 +1,5 @@
-from ctypes import c_void_p, windll, wintypes
+from ctypes import c_void_p, windll
+from ctypes.wintypes import BOOL, DWORD, HMONITOR, LPRECT
 
 from System import Environment
 
@@ -13,7 +14,7 @@ DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4
 win_version = Environment.OSVersion.Version
 if (win_version.Major, win_version.Minor, win_version.Build) >= (10, 0, 15063):
     SetProcessDpiAwarenessContext = user32.SetProcessDpiAwarenessContext
-    SetProcessDpiAwarenessContext.restype = wintypes.BOOL
+    SetProcessDpiAwarenessContext.restype = BOOL
     SetProcessDpiAwarenessContext.argtypes = [c_void_p]
 
     SetThreadDpiAwarenessContext = user32.SetThreadDpiAwarenessContext
@@ -32,5 +33,15 @@ else:  # pragma: no cover
 MONITOR_DEFAULTTONEAREST = 2
 
 MonitorFromRect = user32.MonitorFromRect
-MonitorFromRect.restype = wintypes.HMONITOR
-MonitorFromRect.argtypes = [wintypes.LPRECT, wintypes.DWORD]
+MonitorFromRect.restype = HMONITOR
+MonitorFromRect.argtypes = [LPRECT, DWORD]
+
+
+SendMessageW = user32.SendMessageW
+GetSystemMetrics = user32.GetSystemMetrics
+CreateWindowExW = user32.CreateWindowExW
+GetWindowLongPtrW = user32.GetWindowLongPtrW
+GetWindowRect = user32.GetWindowRect
+SetWindowPos = user32.SetWindowPos
+GetDC = user32.GetDC
+ReleaseDC = user32.ReleaseDC
