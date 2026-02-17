@@ -261,13 +261,12 @@ class DetailedList(Box):
     def _format_text(self, text: str) -> str:
         # Remove new lines.
         text = " ".join(text.splitlines())
+        pixel_diff = self._tile_text_width - str_pixels(text, self._hwnd)
 
-        if not text:
-            # ListView will remove "columns" (rows within items) with empty strings.
-            return " "
-        elif len(text) < 260 and str_pixels(text, self._hwnd) < self._tile_text_width:
-            # cchTextMax is 260, so max string length is 259 + null_terminator.
-            return text
+        # cchTextMax is 260, so max string length is 259 + null_terminator.
+        if len(text) < 260 and str_pixels(text, self._hwnd) < self._tile_text_width:
+            # Pad string with " " to improve visuals and ease of item selection.
+            return text + " " * divmod(pixel_diff, str_pixels(" ", self._hwnd))[0]
 
         # If the  previous conditions are not satisfied, the text must be shortened
         # and "..." appended. So the max number of characters to check is 256.
