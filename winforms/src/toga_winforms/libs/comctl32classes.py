@@ -66,7 +66,8 @@ class INITCOMMONCONTROLSEX(c_Structure):
 
 
 # https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-nmlistview
-from .user32classes import NMHDR
+from .user32classes import NMHDR  # noqa (avoid circular reference.)
+
 
 class NMLISTVIEW(c_Structure):
     _fields_ = [

@@ -16,7 +16,13 @@ from ..libs.comctl32 import (
     RemoveWindowSubclass,
     SetWindowSubclass,
 )
-from ..libs.comctl32classes import INITCOMMONCONTROLSEX, LVCOLUMNW, LVITEMW, LVTILEVIEWINFO, NMLISTVIEW
+from ..libs.comctl32classes import (
+    INITCOMMONCONTROLSEX,
+    LVCOLUMNW,
+    LVITEMW,
+    LVTILEVIEWINFO,
+    NMLISTVIEW,
+)
 from ..libs.user32 import (
     CreateWindowExW,
     GetSystemMetrics,
@@ -180,8 +186,7 @@ class DetailedList(Box):
 
             # Messages from the ListView to itself (usually WM_REFLECT_NOTIFY).
             if phdr.hwndFrom == self._hwnd:
-                
-                # LVN_GETDISPINFOW requests the item display data for the ListView object.
+                # LVN_GETDISPINFOW requests item display data for the ListView object.
                 if phdr.code == wc.LVN_GETDISPINFOW:
                     disp_info = cast(lParam, POINTER(NMLVDISPINFOW)).contents
                     self._set_subitem(disp_info.item)
@@ -209,8 +214,11 @@ class DetailedList(Box):
             puColumns = cast(lvitem.puColumns, POINTER(UINT * 1)).contents
             puColumns[0] = UINT(1)
 
+        # According to the above documentation, only the first 259 characters are
+        # displayed. Hence, cchTextMax = 259 + null terminator. 
         if is_submessage(lvitem.uiMask, wc.LVIF_TEXT):
             if lvitem.iSubItem in {0, 1}:
+                lvitem.cchTextMax = 260
                 lvitem.pszText = titles[lvitem.iSubItem]
 
         if is_submessage(lvitem.uiMask, wc.LVIF_IMAGE):
@@ -219,22 +227,22 @@ class DetailedList(Box):
     def _conduct_selection_change(self, nmlv):
         # learn.microsoft.com/en-us/windows/win32/controls/lvn-itemchanged
         # learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-nmlistview
-        
+
         # nmlv.iItem == -1 indicates the change is made to all items. Since, Detailed
-        # List only supports single item selection (and LVS_SINGLESEL is used), this 
-        # case is ignored. 
+        # List only supports single item selection (and LVS_SINGLESEL is used), this
+        # case is ignored.
         if nmlv.iItem == -1:
             return
 
         # According to the documentation nmlv.uChanged has values coming from the
         # uiMask attribute of the LVITEMW structure. Here selection change corresponds
-        # to LVIF_STATE. 
-        if is_submessage(nmlv.uChanged, wc.LVIF_STATE): 
+        # to LVIF_STATE.
+        if is_submessage(nmlv.uChanged, wc.LVIF_STATE):
             # uNewState and uOldState have values determined by List-View Item States
             # learn.microsoft.com/en-us/windows/win32/controls/list-view-item-states
             old_is_selected = is_submessage(nmlv.uOldState, wc.LVIS_SELECTED)
             new_is_selected = is_submessage(nmlv.uNewState, wc.LVIS_SELECTED)
-            
+
             if old_is_selected != new_is_selected and new_is_selected:
                 self.interface.on_select()
 
@@ -292,12 +300,23 @@ class DetailedList(Box):
     def _format_text(self, text: str) -> str:
         # Remove new lines.
         text = " ".join(text.splitlines())
-        pixel_diff = self._tile_text_width - str_pixels(text, self._hwnd)
+        pixel_diff_0 = self._tile_text_width - str_pixels(text, self._hwnd)
 
         # cchTextMax is 260, so max string length is 259 + null_terminator.
         if len(text) < 260 and str_pixels(text, self._hwnd) < self._tile_text_width:
-            # Pad string with " " to improve visuals and ease of item selection.
-            return text + " " * divmod(pixel_diff, str_pixels(" ", self._hwnd))[0]
+            # Pad string with whitespace (em space \u2003 & hair space\u200A) to
+            # improve visuals and ease of item selection.
+            pixel_diff_0 = self._tile_text_width - str_pixels(text, self._hwnd)
+            pad_0 = "\u2003" * divmod(pixel_diff_0, str_pixels("\u2003", self._hwnd))[0]
+
+            if len(text) + len(pad_0) >= 260:
+                return (text + pad_0)[:259]
+            else:
+                pixel_diff_1 = pixel_diff_0 - str_pixels(pad_0, self._hwnd)
+                pad_1 = (
+                    "\u200a" * divmod(pixel_diff_1, str_pixels("\u200a", self._hwnd))[0]
+                )
+                return (text + pad_0 + pad_1)[:259]
 
         # If the  previous conditions are not satisfied, the text must be shortened
         # and "..." appended. So the max number of characters to check is 256.
