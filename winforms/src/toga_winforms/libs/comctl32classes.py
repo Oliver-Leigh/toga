@@ -1,5 +1,5 @@
 from ctypes import Structure as c_Structure
-from ctypes.wintypes import DWORD, INT, LPARAM, LPWSTR, RECT, SIZE, UINT
+from ctypes.wintypes import DWORD, INT, LPARAM, LPWSTR, POINT, RECT, SIZE, UINT
 
 from .win32 import PINT, PUINT
 
@@ -62,4 +62,20 @@ class INITCOMMONCONTROLSEX(c_Structure):
     _fields_ = [
         ("dwSize", DWORD),
         ("dwICC", DWORD),
+    ]
+
+
+# https://learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-nmlistview
+from .user32classes import NMHDR
+
+class NMLISTVIEW(c_Structure):
+    _fields_ = [
+        ("hdr", NMHDR),
+        ("iItem", INT),
+        ("iSubItem", INT),
+        ("uNewState", UINT),
+        ("uOldState", UINT),
+        ("uChanged", UINT),
+        ("ptAction", POINT),
+        ("lParam", LPARAM),
     ]

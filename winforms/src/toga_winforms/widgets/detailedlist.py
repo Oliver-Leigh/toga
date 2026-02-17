@@ -16,7 +16,7 @@ from ..libs.comctl32 import (
     RemoveWindowSubclass,
     SetWindowSubclass,
 )
-from ..libs.comctl32classes import INITCOMMONCONTROLSEX, LVCOLUMNW, LVTILEVIEWINFO
+from ..libs.comctl32classes import INITCOMMONCONTROLSEX, LVCOLUMNW, LVITEMW, LVTILEVIEWINFO, NMLISTVIEW
 from ..libs.user32 import (
     CreateWindowExW,
     GetSystemMetrics,
@@ -175,13 +175,20 @@ class DetailedList(Box):
         if uMsg == wc.WM_NCDESTROY:
             RemoveWindowSubclass(hWnd, self.pfn_subclass, uIdSubclass)
 
-        # Handle message to set the ListView item data.
         elif uMsg == wc.WM_NOTIFY:
             phdr = cast(lParam, POINTER(NMHDR)).contents
-            code = phdr.code
-            if hex(code) == hex(wc.LVN_GETDISPINFOW):
-                disp_info = cast(lParam, POINTER(NMLVDISPINFOW)).contents
-                self._set_subitem(disp_info.item)
+
+            # Messages from the ListView to itself (usually WM_REFLECT_NOTIFY).
+            if phdr.hwndFrom == self._hwnd:
+                
+                # LVN_GETDISPINFOW requests the item display data for the ListView object.
+                if phdr.code == wc.LVN_GETDISPINFOW:
+                    disp_info = cast(lParam, POINTER(NMLVDISPINFOW)).contents
+                    self._set_subitem(disp_info.item)
+
+                elif phdr.code == wc.LVN_ITEMCHANGED:
+                    nmlv = cast(lParam, POINTER(NMLISTVIEW)).contents
+                    self._conduct_selection_change(nmlv)
 
         # Resize ListView to be the same size as the Box container.
         # learn.microsoft.com/en-us/windows/win32/winmsg/wm-size
@@ -191,8 +198,9 @@ class DetailedList(Box):
         # Call the original window procedure
         return DefSubclassProc(HWND(hWnd), UINT(uMsg), WPARAM(wParam), LPARAM(lParam))
 
-    def _set_subitem(self, lvitem):
+    def _set_subitem(self, lvitem: LVITEMW):
         # Set the subitem data in the ListView object.
+        # learn.microsoft.com/en-us/windows/win32/controls/lvn-getdispinfo
         # learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-lvitemw
         titles, icon_index = self._retrieve_virtual_item(lvitem.iItem)
 
@@ -207,6 +215,28 @@ class DetailedList(Box):
 
         if is_submessage(lvitem.uiMask, wc.LVIF_IMAGE):
             lvitem.iImage = icon_index
+
+    def _conduct_selection_change(self, nmlv):
+        # learn.microsoft.com/en-us/windows/win32/controls/lvn-itemchanged
+        # learn.microsoft.com/en-us/windows/win32/api/commctrl/ns-commctrl-nmlistview
+        
+        # nmlv.iItem == -1 indicates the change is made to all items. Since, Detailed
+        # List only supports single item selection (and LVS_SINGLESEL is used), this 
+        # case is ignored. 
+        if nmlv.iItem == -1:
+            return
+
+        # According to the documentation nmlv.uChanged has values coming from the
+        # uiMask attribute of the LVITEMW structure. Here selection change corresponds
+        # to LVIF_STATE. 
+        if is_submessage(nmlv.uChanged, wc.LVIF_STATE): 
+            # uNewState and uOldState have values determined by List-View Item States
+            # learn.microsoft.com/en-us/windows/win32/controls/list-view-item-states
+            old_is_selected = is_submessage(nmlv.uOldState, wc.LVIS_SELECTED)
+            new_is_selected = is_submessage(nmlv.uNewState, wc.LVIS_SELECTED)
+            
+            if old_is_selected != new_is_selected and new_is_selected:
+                self.interface.on_select()
 
     def _set_list_view_size(self, width: int, height: int):
         lvitemviewinfo = LVTILEVIEWINFO()
