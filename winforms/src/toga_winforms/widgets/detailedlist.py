@@ -86,8 +86,9 @@ class DetailedList(Box):
 
         # Create the ListView object.
         # learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-createwindowexw
-        initial_style = wc.LVS_OWNERDATA | wc.LVS_SINGLESEL | wc.LVS_REPORT
-
+        initial_style = (
+            wc.LVS_OWNERDATA | wc.LVS_SINGLESEL | wc.LVS_SHOWSELALWAYS | wc.LVS_REPORT
+        )
         self._hwnd = CreateWindowExW(
             wc.LVS_EX_DOUBLEBUFFER,
             wc.WC_LISTVIEW,
@@ -315,7 +316,11 @@ class DetailedList(Box):
         SendMessageW(self._hwnd, wc.LVM_ENSUREVISIBLE, index, False)
 
     def get_selection(self):
-        return SendMessageW(self._hwnd, wc.LVM_GETNEXTITEM, -1, wc.LVNI_SELECTED)
+        index = SendMessageW(self._hwnd, wc.LVM_GETNEXTITEM, -1, wc.LVNI_SELECTED)
+        if index < 0:
+            return None
+
+        return index
 
     def update_data(self):
         SendMessageW(
