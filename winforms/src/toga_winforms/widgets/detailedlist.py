@@ -26,7 +26,7 @@ from ..libs.user32 import (
     SetWindowPos,
 )
 from ..libs.user32classes import NMHDR, NMLVDISPINFOW, SUBCLASSPROC
-from ..libs.win32 import HIWORD, is_submessage, LONG_PTR, LOWORD, LRESULT, str_pixels
+from ..libs.win32 import HIWORD, LONG_PTR, LOWORD, LRESULT, is_submessage, str_pixels
 from .box import Box
 
 # Columns to adapt DetailedList source to Table.
@@ -230,7 +230,7 @@ class DetailedList(Box):
             height,
             wc.SWP_NOMOVE | wc.SWP_NOZORDER | wc.SWP_SHOWWINDOW,
         )
-    
+
     @property
     def _box_dimensions(self):
         box_rect = RECT()
@@ -247,7 +247,7 @@ class DetailedList(Box):
 
     @property
     def _tile_text_width(self):
-        return ( self._tile_width - floor(1.7*GetSystemMetrics(wc.SM_CXICON)) )
+        return self._tile_width - floor(1.7 * GetSystemMetrics(wc.SM_CXICON))
 
     def _image_index(self, icon):
         images = self._image_list.Images
@@ -257,22 +257,35 @@ class DetailedList(Box):
             index = images.Count
             images.Add(key, icon.bitmap)
         return index
-    
-    def _clip_text(self, text: str) -> str:
-        # cchTextMax is 260, so max string length is 259 + null_terminator.
-        text = " ".join(text.splitlines())[:259]
+
+    def _format_text(self, text: str) -> str:
+        # Remove new lines.
+        text = " ".join(text.splitlines())
+
         if not text:
-            # ListView will remove rows with empty strings.
+            # ListView will remove "columns" (rows within items) with empty strings.
             return " "
-        elif str_pixels(text, self._hwnd) < self._tile_text_width:
-           return text
-        
-        # If the previous conditions are not satisfied, the text must be shortened
+        elif len(text) < 260 and str_pixels(text, self._hwnd) < self._tile_text_width:
+            # cchTextMax is 260, so max string length is 259 + null_terminator.
+            return text
+
+        # If the  previous conditions are not satisfied, the text must be shortened
         # and "..." appended. So the max number of characters to check is 256.
-        for i in range(min(256, len(text))):
-            if str_pixels(text[:i] + "...", self._hwnd) > self._tile_text_width:
-                return text[: i - 1] + "..."
-        return text[:256] + "..."
+        #
+        # Implementing the following guess reduces computation time for long strings
+        # by around two thirds.
+        approx_index = min(divmod(self._tile_text_width, 11)[0], 256)
+
+        if str_pixels(text[:approx_index] + "...", self._hwnd) <= self._tile_text_width:
+            for i in range(approx_index + 1, min(256, len(text))):
+                if str_pixels(text[:i] + "...", self._hwnd) > self._tile_text_width:
+                    return text[: i - 1] + "..."
+            return text[:256] + "..."
+        else:
+            for i in range(approx_index, 0, -1):
+                if str_pixels(text[:i] + "...", self._hwnd) < self._tile_text_width:
+                    return text[:i] + "..."
+            return "..."
 
     def _new_item(self, index) -> tuple[tuple[str, str], int]:
         item = self._data[index]
@@ -281,7 +294,7 @@ class DetailedList(Box):
 
         new_item = (
             tuple(
-                c_wchar_p(self._clip_text(column.text(item, missing_value)))
+                c_wchar_p(self._format_text(column.text(item, missing_value)))
                 for column in self._columns
             ),
             -1 if icon is None else self._image_index(icon._impl),
