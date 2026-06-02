@@ -73,8 +73,8 @@ resources = "toga_winui3.resources"
 # Location = "toga_winui3.hardware.location:Location"
 
 # Status Icons
-# MenuStatusIcon = "toga_winui3.statusicons:MenuStatusIcon"
-# SimpleStatusIcon = "toga_winui3.statusicons:SimpleStatusIcon"
+MenuStatusIcon = "toga_winui3.statusicons:MenuStatusIcon"
+SimpleStatusIcon = "toga_winui3.statusicons:SimpleStatusIcon"
 StatusIconSet = "toga_winui3.statusicons:StatusIconSet"
 
 # Widgets
@@ -116,6 +116,7 @@ dependencies = [
     "toga-core == {version}",
     "win32more >= 0.8.1",
     "winui3-Microsoft.UI.Interop",
+    "winui3-Microsoft.UI",
     "winrt-runtime",
 ]
 
