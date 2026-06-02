@@ -114,8 +114,14 @@ class WinUI3ProactorEventLoop(asyncio.ProactorEventLoop):
         self.queue_timer: DispatcherQueueTimer
         self._inner_loop = None
 
-        app.native.OnLaunched = partial(native_app_launched, self)
-        app.native.OnExited = partial(native_app_exited, self)
+        def on_lauched(winui3_app, args):
+            return native_app_launched(self, winui3_app, args)
+        
+        def on_exited(winui3_app):
+            return native_app_exited(self, winui3_app)
+        
+        app.native.OnLaunched = on_lauched
+        app.native.OnExited = on_exited
 
         # Start the native event loop.
         app.native.Start()
