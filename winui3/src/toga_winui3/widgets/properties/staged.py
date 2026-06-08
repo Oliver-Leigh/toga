@@ -1,0 +1,122 @@
+from win32more.Microsoft.UI.Xaml.Controls import RelativePanel
+
+"""
+Overview of content staging
+
+ISSUE: Some Toga widgets (e.g. Button) use minimum size constraints that are based on
+their content. The native WinUI 3 widget will resize itself according to this content,
+but only if size values have not been manually set. Since the size values are manually
+set by the Toga style applicator, the native widget will not resize.
+
+SOLUTION: The work-around used here is to 'stage' the properties that lead to resizing.
+In practice, this means that when a property is changed, a copy of the widget is created
+in a hidden panel and allowed to resize. Upon resize, the copy is destroyed and the new
+minimum size measurements are then sent to the Toga style applicator.
+    The main advantage of copying the widget is that flicker is reduced: The displayed
+widget will only change appearance when the new size has been calculated.
+
+IMPORTANT: The values of staged properties are set as 'value creator' callables that
+create new instances of the desired content. This is because not all native classes can
+be children of multiple native classes.
+"""
+
+
+class StagingArea:
+    """A class used to calculate content-based constraints for WinUI 3 widgets.
+
+    A StagingArea has a hidden native panel that allows widgets with the staged content
+    resize themselves. Every StagingArea is attached to a Container and its hidden
+    native panel is a child of a Container's own native panel.
+    """
+
+    def __init__(self, container):
+        """Create an instance of a StagingArea.
+
+        :param container: The Container where the StagingArea will be attached.
+        """
+        self._native = RelativePanel()
+        self._native.Visible = False
+
+        self._native_widgets = []
+
+        # Add the container
+        self._container = container
+        self._container.native.Children.InsertAt(0, self._native)
+
+    def add(self, native_widget):
+        self._native_widgets.append(native_widget)
+        self._native.Children.Append(native_widget)
+
+    def remove(self, widget):
+        """Removes a widget and triggers a layout refresh when the widget list empties.
+
+        The refresh mechanism here is to avoid excessive refresh calls.
+        """
+        non_empty_initial = len(self._native_widgets) > 0
+        index = self._native_widgets.index(widget)
+        self._native_widgets.remove(widget)
+        self._native.Children.RemoveAt(index)
+        empty_final = len(self._native_widgets) == 0
+
+        if non_empty_initial and empty_final:
+            if self._container._content:
+                self._container._content.interface.refresh()
+
+
+class StagedProperties:
+    def __init__(self, widget):
+        self._widget = widget
+        self._duplicate = None
+        self._staged_properties = {}
+
+        self._font_keys = {"FontFamily", "FontSize", "FontStyle", "FontWeight"}
+
+    def __setattr__(self, name, value):
+        """Sets the native property value for a name with a capital first character.
+
+        Note that the 'value' of a staged property must be a 'value creator' callable
+        that creates a new instance of the desired content.
+        """
+        if not name[0].isupper():
+            super().__setattr__(name, value)
+            return
+
+        if not callable(value):
+            raise ValueError(
+                "The 'value' of a staged property must be callable i.e. a "
+                + "'value creator'."
+            )
+
+        # Set and cache the native property.
+        setattr(self._widget._native_properties, name, value())
+        self._staged_properties[name] = value
+
+        self.refresh()
+
+    def refresh(self):
+        if not self._widget._container:
+            return
+
+        # The properties in self._font_keys are only staged if other content such as
+        # text is being staged as well.
+        if set(self._staged_properties.keys()) - self._font_keys == set():
+            return
+
+        widget = self._widget
+        self._duplicate = type(widget.native)()
+        self._duplicate.SizeChanged += self.native_event_size_changed
+
+        for attribute, value_creator in self._staged_properties.items():
+            value = value_creator()
+            if value is not None:
+                setattr(self._duplicate, attribute, value)
+
+        widget.container.staging_area.add(self._duplicate)
+
+    def native_event_size_changed(self, sender, args):
+        self._widget._min_width = self._duplicate.ActualSize.X
+        self._widget._min_height = self._duplicate.ActualSize.Y
+        self._widget.rehint()
+
+        self._widget.container.staging_area.remove(self._duplicate)
+        self._duplicate = None

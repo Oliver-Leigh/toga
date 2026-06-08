@@ -1,7 +1,9 @@
 from math import ceil
 
 from win32more.Microsoft.UI.Xaml import HorizontalAlignment, VerticalAlignment
-from win32more.Microsoft.UI.Xaml.Controls import Canvas, RelativePanel
+from win32more.Microsoft.UI.Xaml.Controls import Canvas
+
+from .widgets.properties.staged import StagingArea
 
 
 class ContainerWidgets:
@@ -15,55 +17,14 @@ class ContainerWidgets:
     def _native(self):
         return self._container.native
 
-    def clear(self):
-        if len(self._widgets) < 1:
-            return
-
-        for widget in self._widgets:
-            widget.container = None
-            self._widgets = []
-
-        self._native.Children.Clear()
-
     def add(self, widget):
         self._widgets.append(widget)
         self._native.Children.Append(widget.native)
 
     def remove(self, widget):
-        index = self._widgets.index(widget)
-        self._widgets.remove(widget)
+        index = self._native_widgets.index(widget)
+        self._native_widgets.remove(widget.native)
         self._native.Children.RemoveAt(index)
-
-
-class ContainerStagingArea(ContainerWidgets):
-    """A class used to calculate content-based constraints for WinUI 3 widgets.
-
-    Some WinUI 3 widgets such as Button require minimum size constraints that are only
-    be calculated once they are attached to a window. ContainerStagingArea uses a hidden
-    panel (self._native) which allows the widgets to resize based on native parameters.
-
-    This class should be use in conjunction with WidgetStager
-    """
-
-    @property
-    def _native(self):
-        return self._container._staging_panel
-
-    def remove(self, widget):
-        """Removes a widget and triggers a layout refresh when the widget list empties.
-
-        The refresh mechanism here is to avoid excessive refreshes. A single refresh
-        call will cause every widget in the Container to be refreshed. For example if a
-        Container had 100 buttons attached, then each button would be refreshed 100
-        times with 10,000 total refresh calls (compared with the ~1 refresh call here).
-        """
-        non_empty_initial = len(self._widgets) > 0
-        super().remove(widget)
-        empty_final = len(self._widgets) == 0
-
-        if non_empty_initial and empty_final:
-            if self._container._content:
-                self._container._content.interface.refresh()
 
 
 class Container:
@@ -89,8 +50,8 @@ class Container:
     def __init__(self, native_panel: Canvas):
         """Initialize a Container using a given native panel.
 
-        :param container_native: The native panel where the widgets.native classes can
-            be attached.
+        :param native_panel: The native panel where the widgets.native classes can be
+            attached.
         """
         self.native = native_panel
         self.native.HorizontalAlignment = HorizontalAlignment.Stretch
@@ -98,13 +59,9 @@ class Container:
         self.native.SizeChanged += self.native_event_size_changed
 
         self._content = None
+
         self.widgets = ContainerWidgets(self)
-
-        self._staging_panel = RelativePanel()
-        self._staging_panel.Visible = False
-        self.native.Children.Append(self._staging_panel)
-
-        self.staging_area = ContainerStagingArea(self)
+        self.staging_area = StagingArea(self)
 
     ####################################################################################
     # Container geometry

@@ -1,35 +1,14 @@
 from abc import ABC, abstractmethod
-from warnings import warn
 
-from travertino.constants import TRANSPARENT
 from travertino.size import at_least
-from win32more.Microsoft.UI.Xaml import FocusState
-from win32more.Microsoft.UI.Xaml.Controls import Canvas, Control, Panel
+from win32more.Microsoft.UI.Xaml import FocusState, Visibility
+from win32more.Microsoft.UI.Xaml.Controls import Canvas, Panel
+
+from toga.constants import TRANSPARENT
 
 from ..colors import native_brush
-from ..libs.misc import is_based_on
-
-
-class WidgetStager:
-    def __init__(self, widget):
-        self.width = 0
-        self.height = 0
-        self._widget = widget
-        self._widget_copy = None
-
-    def refresh(self):
-        self._widget_copy = type(self._widget)(None)
-        self._widget_copy.native.SizeChanged += self.native_event_size_changed
-        self._widget.container.staging_area.add(self._widget_copy)
-        self._widget_copy.native.Content = self._widget.content_creator()
-
-    def native_event_size_changed(self, sender, args):
-        self.width = self._widget_copy.native.ActualSize.X
-        self.height = self._widget_copy.native.ActualSize.Y
-
-        self._widget.rehint()
-        self._widget.container.staging_area.remove(self._widget_copy)
-        self._widget_copy = None
+from .properties.native import NativeProperties, is_based_on
+from .properties.staged import StagedProperties
 
 
 class Widget(ABC):
@@ -40,10 +19,15 @@ class Widget(ABC):
     def __init__(self, interface):
         super().__init__()
         self.interface = interface
-        self._container = None
-        self._content = None
-        self._constraints = None
         self.native = None
+
+        self._container = None
+
+        self._native_properties = NativeProperties(self)
+        self._staged_properties = StagedProperties(self)
+
+        self._min_width = self.interface._MIN_WIDTH
+        self._min_height = self.interface._MIN_HEIGHT
 
         self.create()
 
@@ -51,10 +35,12 @@ class Widget(ABC):
     def create(self): ...
 
     def set_app(self, app):  # noqa B027
-        self.interface.factory.not_implemented("Widget.set_app")
+        # Everything is already handled by the Toga core interface.
+        pass
 
-    def set_window(self, window):
-        self.interface.factory.not_implemented("Widget.set_window")
+    def set_window(self, window):  # noqa B027
+        # Everything is already handled by the Toga core interface.
+        pass
 
     ####################################################################################
     # Methods relating to the container.
@@ -72,8 +58,7 @@ class Widget(ABC):
         self._container = container
         if container:
             container.widgets.add(self)
-            if self._constraints:
-                self._constraints.refresh()
+            self._staged_properties.refresh()
 
         for child in self.interface.children:
             child._impl.container = container
@@ -98,20 +83,14 @@ class Widget(ABC):
     ####################################################################################
 
     def set_background_color(self, color):
-        cls_native = type(self.native)
-        if color is None:
-            if is_based_on(cls_native, Control):
-                self.native.ClearValue(Control.BackgroundProperty)
-            elif is_based_on(cls_native, Panel):
-                self.native.Background = native_brush(TRANSPARENT)
-            else:
-                warn(
-                    "Widget.set_background_color(None) has not been configured for the "
-                    + f"class {cls_native}.",
-                    stacklevel=1,
-                )
+        if color is not None:
+            brush = native_brush(color)
+        elif is_based_on(type(self.native), Panel):
+            brush = native_brush(TRANSPARENT)
         else:
-            self.native.Background = native_brush(color)
+            brush = None
+
+        self._native_properties.Background = brush
 
     def set_bounds(self, x, y, width, height):
         self.native.Width = width
@@ -120,32 +99,29 @@ class Widget(ABC):
         Canvas.SetTop(self.native, y)
 
     def set_color(self, color):
-        cls_native = type(self.native)
-
-        # WinUI 3 controls based on the Panel class do not have a Foreground property.
-        if is_based_on(cls_native, Panel):
-            return
-
-        if color is None:
-            if is_based_on(cls_native, Control):
-                self.native.ClearValue(Control.ForegroundProperty)
-            else:
-                warn(
-                    "Widget.set_background_color(None) has not been configured for the "
-                    + f"class {cls_native}.",
-                    stacklevel=1,
-                )
+        if color is not None:
+            brush = native_brush(color)
         else:
-            self.native.Foreground = native_brush(color)
+            brush = None
+
+        self._native_properties.Foreground = brush
 
     def set_font(self, font):
-        self.interface.factory.not_implemented("Widget.set_font()")
+        native_font = font._impl.native
+        staged_properties = self._staged_properties
+
+        staged_properties.FontFamily = native_font.FontFamily
+        staged_properties.FontSize = native_font.FontSize
+        staged_properties.FontStyle = native_font.FontStyle
+        staged_properties.FontWeight = native_font.FontWeight
 
     def set_hidden(self, hidden):
-        self.interface.factory.not_implemented("Widget.set_hidden()")
+        state = Visibility.Collapsed if hidden else Visibility.Visible
+        self.native.Visibility = state
 
-    def set_text_align(self, alignment):
-        self.interface.factory.not_implemented("Widget.set_text_align()")
+    def set_text_align(self, alignment):  # noqa B027
+        # Where appropriate, this is implement on a widget by widget basis.
+        pass
 
     ####################################################################################
     # Other methods called by the Toga core interface.
@@ -174,28 +150,5 @@ class Widget(ABC):
         self.rehint()
 
     def rehint(self):
-        self.interface.intrinsic.width = at_least(self.interface._MIN_WIDTH)
-        self.interface.intrinsic.height = at_least(self.interface._MIN_HEIGHT)
-
-    ####################################################################################
-    # Content.
-    #
-    # These methods are to be used by Widgets that have minimum size constraints based
-    # on their content. When these widgets are staged in the container staging area, a
-    # copy of the native content needs to be created. It's difficult to created a direct
-    # copy of the content, so here a mechanism is used to create a new version of the
-    # content using a "content creator".
-    ####################################################################################
-
-    @property
-    def content_creator(self):
-        return self._content_creator
-
-    @content_creator.setter
-    def content_creator(self, creator):
-        self._content_creator = creator
-        self.content = creator()
-        self.native.Content = self.content
-
-        if self._container:
-            self._constraints.refresh()
+        self.interface.intrinsic.width = at_least(self._min_width)
+        self.interface.intrinsic.height = at_least(self._min_height)

@@ -5,13 +5,12 @@ from win32more.Microsoft.UI.Xaml.Controls import (
     SymbolIcon,
 )
 
-from .base import Widget, WidgetStager
+from .base import Widget
 
 
 class Button(Widget):
     def create(self):
         self.native = NativeButton()
-        self._constraints = WidgetStager(self)
         self._icon = None
         self._text = ""
 
@@ -29,11 +28,11 @@ class Button(Widget):
         if self._icon is not None:
             return
 
-        def creator(text=text):
-            # "\u200b" (ZERO WIDTH SPACE) instead of "" ensures correct button height.
-            return "\u200b" if text == "" else text
+        self._staged_properties.Content = self.text
 
-        self.content_creator = creator
+    def text(self):
+        # "\u200b" (ZERO WIDTH SPACE) instead of "" ensures correct button height.
+        return "\u200b" if self._text == "" else self._text
 
     def get_icon(self):
         return self._icon
@@ -44,13 +43,27 @@ class Button(Widget):
         if icon is None:
             return
 
-        def creator():
-            symbol_icon = SymbolIcon()
-            symbol_icon.Symbol = Symbol.Document
-            return symbol_icon
+        self._staged_properties.Content = self.icon
 
-        self.content_creator = creator
+    def icon(self):
+        symbol_icon = SymbolIcon()
+        symbol_icon.Symbol = Symbol.Document
+        return symbol_icon
+
+    ####################################################################################
+    # Overrides of methods called by the Toga style applicator.
+    ####################################################################################
+
+    def set_text_align(self, alignment):
+        # FIXME: WinUI 3 has the ability to set the content alignment of a button, but
+        # the Toga style will default to either left-aligned or right-aligned which is
+        # different from the default WinUI 3 value of center-aligned.
+        pass
+
+    ####################################################################################
+    # Overrides of other methods called by the Toga core interface.
+    ####################################################################################
 
     def rehint(self):
-        self.interface.intrinsic.width = at_least(self._constraints.width)
-        self.interface.intrinsic.height = self._constraints.height
+        self.interface.intrinsic.width = at_least(self._min_width)
+        self.interface.intrinsic.height = self._min_height
