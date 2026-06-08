@@ -1,12 +1,33 @@
-from ctypes import WinError, byref
+from ctypes import POINTER, WinError, byref
 
+from win32more import String
 from win32more.Windows.Win32.Foundation import BOOL, UIntPtr
 from win32more.Windows.Win32.Graphics.GdiPlus import (
+    FontStyleBold,
+    FontStyleBoldItalic,
+    FontStyleItalic,
+    # GDI+ Fonts
+    FontStyleRegular,
+    FontStyleStrikeout,
+    FontStyleUnderline,
+    # GDI+ Icons
+    GdipCreateBitmapFromFile,
+    GdipCreateFontFamilyFromName,
+    GdipCreateHICONFromBitmap,
+    GdipIsStyleAvailable,
+    # Main GDI+ operations
     GdiplusShutdown,
     GdiplusStartup,
     GdiplusStartupInput,
     GdiplusStartupOutput,
+    GpBitmap,
+    GpFontFamily,
 )
+from win32more.Windows.Win32.UI.WindowsAndMessaging import HICON
+
+########################################################################################
+# Main GDI+ operations
+########################################################################################
 
 status_dict = {
     0: "Ok",
@@ -34,7 +55,7 @@ status_dict = {
 }
 
 
-class GdiPlus:
+class GdiPlusContext:
     """A context manager for running GdiPlus functions."""
 
     def __init__(self):
@@ -66,4 +87,77 @@ class GdiPlus:
         pass
 
 
-gdi_plus = GdiPlus()
+gdi_plus_context = GdiPlusContext()
+
+
+########################################################################################
+# GDI+ fonts
+########################################################################################
+
+FontFamilyPtr = POINTER(GpFontFamily)
+
+
+ALL_FONT_STYLES = (
+    FontStyleRegular
+    | FontStyleBold
+    | FontStyleItalic
+    | FontStyleBoldItalic
+    | FontStyleUnderline
+    | FontStyleStrikeout
+)
+
+
+def is_font_installed(font_family_name: str):
+    """Checks whether a font is installed on the current system.
+
+    Note that the font family name must be exactly as it appears in the Windows Settings
+    under Personalization > Fonts.
+
+    For example, "Times New Roman" will load but variations such as "Times New", "Times
+    New Roman Bold" will not.
+    """
+    with gdi_plus_context:
+        font_family_ptr = FontFamilyPtr()
+        font_available = BOOL()
+
+        # Attempt to create the font family.
+        GdipCreateFontFamilyFromName(
+            String(font_family_name), None, byref(font_family_ptr)
+        )
+
+        # Check if the font family has been created.
+        GdipIsStyleAvailable(font_family_ptr, ALL_FONT_STYLES, byref(font_available))
+
+    return font_available.value == 1
+
+
+########################################################################################
+# GDI+ icons
+########################################################################################
+
+BitmapPtr = POINTER(GpBitmap)
+
+
+def create_icon(icon_path: str) -> HICON:
+    """Creates a Win32 icon from a file."""
+    bitmap_ptr = BitmapPtr()
+    icon_handle = HICON()
+
+    bitmap_status = 1
+    handle_status = 1
+    with gdi_plus_context:
+        bitmap_status = GdipCreateBitmapFromFile(String(icon_path), byref(bitmap_ptr))
+        handle_status = GdipCreateHICONFromBitmap(bitmap_ptr, byref(icon_handle))
+
+    if bitmap_status != 0 or handle_status != 0:
+        message = f"Unable to create icon bitmap from {icon_path}.\n"
+        if bitmap_status != 0:
+            message += "GdipCreateBitmapFromFile code: "
+            message += str(status_dict[bitmap_status])
+        else:
+            message += "GdipCreateHICONFromBitmap code: "
+            message += str(status_dict[handle_status])
+
+        raise ValueError(message)
+
+    return icon_handle
