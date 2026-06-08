@@ -57,7 +57,6 @@ class Window:
 
         # Create the window content and attach it.
         self.create_content()
-        self.native.Content = self.content_native
 
     def create(self):
         self.native = App.app._impl.native_instance.CreateWindow()
@@ -70,8 +69,9 @@ class Window:
 
     def create_content(self):
         """Construct the container."""
-        self.content_native = Canvas()
-        self.container = Container(self.content_native)
+        self.container_native = Canvas()
+        self.container = Container(self.container_native)
+        self.native.Content = self.container_native
 
     def _set_restrictions(self):
         """Sets the window properties of being minimizable and resizable."""
@@ -163,7 +163,7 @@ class Window:
     # Toga terminology <-> Microsoft terminology:
     #   - Physical pixels <-> Device pixels
     #       - The individual physical pixels that comprise the screen.
-    #   - CSS pixels <-> Effective pixels ()
+    #   - CSS pixels <-> Effective pixels
     #       - A virtual unit of measurement used for internal window properties so that
     #         a window appears the on screens with different scale factors.
     #
@@ -181,10 +181,10 @@ class Window:
 
     def set_size(self, size: SizeT):
         """Sets the size of the window in effective pixels (CSS pixels)."""
-        pixels_to_physical = self.get_current_screen().pixels_to_physical
+        css_to_physical = self.get_current_screen().css_to_physical
 
         self.native.AppWindow.Resize(
-            SizeInt32(pixels_to_physical(size[0]), pixels_to_physical(size[1]))
+            SizeInt32(css_to_physical(size[0]), css_to_physical(size[1]))
         )
 
     ####################################################################################
@@ -203,19 +203,19 @@ class Window:
     # interface layer assumes that Screen.origin, Window.position and
     # Window.screen_position are all in the same coordinate system.
     #
-    # TODO: remove that assumption, and make Window.position return coordinates relative
+    # TODO: Remove that assumption, and make Window.position return coordinates relative
     # to the current screen's origin and DPI.
     def get_position(self) -> Position:
         position = self.native.AppWindow.Position
-        pixels_to_css = App.app._impl.get_primary_screen().pixels_to_css
+        physical_to_css = App.app._impl.get_primary_screen().physical_to_css
 
-        return Position(pixels_to_css(position.X), pixels_to_css(position.Y))
+        return Position(physical_to_css(position.X), physical_to_css(position.Y))
 
     def set_position(self, position: PositionT):
-        pixels_to_physical = App.app._impl.get_primary_screen().pixels_to_physical
+        css_to_physical = App.app._impl.get_primary_screen().css_to_physical
 
         self.native.AppWindow.Move(
-            PointInt32(pixels_to_physical(position.x), pixels_to_physical(position.y))
+            PointInt32(css_to_physical(position.x), css_to_physical(position.y))
         )
 
     ####################################################################################

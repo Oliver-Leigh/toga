@@ -12,8 +12,8 @@ from win32more.Windows.Win32.UI.Shell.Common import DEVICE_SCALE_FACTOR
 # https://github.com/ynkdir/py-win32more/issues/184
 from winui3.microsoft.ui import DisplayId
 from winui3.microsoft.ui.interop import get_monitor_from_display_id
-########################################################################################
 
+########################################################################################
 from toga import App
 from toga.screens import Screen as ScreenInterface
 from toga.types import Position, Size
@@ -45,7 +45,7 @@ class Screen:
     @property
     def handle(self) -> HMONITOR:
         ################################################################################
-        # FIXME: See interop note above. 
+        # FIXME: See interop note above.
         return HMONITOR(
             get_monitor_from_display_id(DisplayId(self.native.DisplayId.Value))
         )
@@ -65,12 +65,12 @@ class Screen:
         GetScaleFactorForMonitor(self.handle, byref(p_scale))
         return p_scale.value / 100
 
-    def pixels_to_physical(self, value):
+    def css_to_physical(self, value):
         return round_pixels(value * self.dpi_scale)
 
-    def pixels_to_css(self, value):
+    def physical_to_css(self, value):
         if isinstance(value, at_least):
-            return at_least(self.pixels_to_css(value.value))
+            return at_least(self.physical_to_css(value.value))
         else:
             return round_pixels(value / self.dpi_scale)
 
@@ -82,17 +82,19 @@ class Screen:
     # is no better choice that could cover screens of multiple DPIs.
     def get_origin(self) -> Position:
         native_bounds = self.native.OuterBounds
-        pixels_to_css = App.app._impl.get_primary_screen().pixels_to_css
+        physical_to_css = App.app._impl.get_primary_screen().physical_to_css
 
-        return Position(pixels_to_css(native_bounds.X), pixels_to_css(native_bounds.Y))
+        return Position(
+            physical_to_css(native_bounds.X), physical_to_css(native_bounds.Y)
+        )
 
     # Screen.size is scaled according to the screen's own DPI, to be consistent with the
     # scaling of Window size and content.
     def get_size(self) -> Size:
         native_bounds = self.native.OuterBounds
         return Size(
-            self.pixels_to_css(native_bounds.Width),
-            self.pixels_to_css(native_bounds.Width),
+            self.physical_to_css(native_bounds.Width),
+            self.physical_to_css(native_bounds.Width),
         )
 
     ####################################################################################

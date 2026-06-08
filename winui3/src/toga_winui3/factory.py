@@ -10,7 +10,7 @@ from .icons import Icon
 
 # from .images import Image
 from .paths import Paths
-from .statusicons import StatusIconSet  # , MenuStatusIcon, SimpleStatusIcon,
+from .statusicons import MenuStatusIcon, SimpleStatusIcon, StatusIconSet
 
 # from .widgets.activityindicator import ActivityIndicator
 from .widgets.box import Box
@@ -63,8 +63,8 @@ __all__ = [
     "Paths",
     # "dialogs",
     # Status Icons
-    # "MenuStatusIcon",
-    # "SimpleStatusIcon",
+    "MenuStatusIcon",
+    "SimpleStatusIcon",
     "StatusIconSet",
     # Widgets
     # "ActivityIndicator",

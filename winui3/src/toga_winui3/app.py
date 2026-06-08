@@ -78,7 +78,7 @@ class App:
         pass
 
     def set_main_window(self, window):
-        self.interface.factory.not_implemented("App.set_main_window")
+        # Everything is already handled by the Toga core interface.
         pass
 
     ####################################################################################
