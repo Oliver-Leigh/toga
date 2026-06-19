@@ -22,8 +22,8 @@ class ContainerWidgets:
         self._native.Children.Append(widget.native)
 
     def remove(self, widget):
-        index = self._native_widgets.index(widget)
-        self._native_widgets.remove(widget.native)
+        index = self._widgets.index(widget)
+        self._widgets.remove(widget)
         self._native.Children.RemoveAt(index)
 
 
