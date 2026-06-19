@@ -11,6 +11,10 @@ class Label(Widget):
         self.native = TextBlock()
         self._text = ""
 
+        # Initial minimum sizes are 0 so that the staged properties are sized up.
+        self._min_width = 0
+        self._min_height = 0
+
     def get_text(self):
         return self._text
 

@@ -14,6 +14,10 @@ class Button(Widget):
         self._icon = None
         self._text = ""
 
+        # Initial minimum sizes are 0 so that the staged properties are sized up.
+        self._min_width = 0
+        self._min_height = 0
+
         self.native.Click += self.native_event_click
 
     def native_event_click(self, sender, args):

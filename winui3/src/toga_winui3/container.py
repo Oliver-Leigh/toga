@@ -41,17 +41,20 @@ class Container:
 
     Attributes:
         native: The WinUI 3 panel where the widgets.native classes will be attached.
-        widgets: A ContainerWidgets instance which adds, removes and keeps a record of
-            the widgets attached to the native panel.
+        on_refresh: A callback to be notified when this container's layout is refreshed.
         staging_area: A ContainerStagingArea instance which is used to stage widgets
             that require a native panel to calculate content-based constraints.
+        widgets: A ContainerWidgets instance which adds, removes and keeps a record of
+            the widgets attached to the native panel.
     """
 
-    def __init__(self, native_panel: Canvas):
+    def __init__(self, native_panel: Canvas, on_refresh=None):
         """Initialize a Container using a given native panel.
 
         :param native_panel: The native panel where the widgets.native classes can be
             attached.
+        :param on_refresh: A callback to be notified when this container's layout is
+            refreshed.
         """
         self.native = native_panel
         self.native.HorizontalAlignment = HorizontalAlignment.Stretch
@@ -59,6 +62,7 @@ class Container:
         self.native.SizeChanged += self.native_event_size_changed
 
         self._content = None
+        self._on_refresh = on_refresh
 
         self.widgets = ContainerWidgets(self)
         self.staging_area = StagingArea(self)
@@ -81,6 +85,22 @@ class Container:
     @property
     def height(self):
         return ceil(self.native.ActualSize.Y)
+
+    @property
+    def min_width(self):
+        return self.native.MinWidth
+
+    @min_width.setter
+    def min_width(self, width):
+        self.native.MinWidth = width
+
+    @property
+    def min_height(self):
+        return self.native.MinHeight
+
+    @min_height.setter
+    def min_height(self, height):
+        self.native.MinHeight = height
 
     ####################################################################################
     # Container content
@@ -116,4 +136,6 @@ class Container:
             self.content.interface.refresh()
 
     def refreshed(self):
-        pass
+        self.min_width = self.content.interface.layout.min_width
+        self.min_height = self.content.interface.layout.min_height
+        self._on_refresh()

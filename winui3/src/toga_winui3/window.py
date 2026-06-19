@@ -6,6 +6,7 @@ from win32more.Microsoft.UI.Windowing import (
     AppWindowPresenterKind,
     DisplayArea,
     DisplayAreaFallback,
+    FullScreenPresenter,
     OverlappedPresenter,
     OverlappedPresenterState,
     TitleBarTheme,
@@ -70,19 +71,19 @@ class Window:
     def create_content(self):
         """Construct the container."""
         self.container_native = Canvas()
-        self.container = Container(self.container_native)
+        self.container = Container(self.container_native, self.content_refreshed)
         self.native.Content = self.container_native
 
     def _set_restrictions(self):
         """Sets the window properties of being minimizable and resizable."""
-        presenter = self.native.AppWindow.Presenter
+        presenter, _ = self._presenter
+
         if presenter.Kind != AppWindowPresenterKind.Overlapped:
             return
 
-        # Cast presenter as an instance of OverlappedPresenter and set the restrictions.
-        overlapped_presenter = OverlappedPresenter(value=presenter.value)
-        overlapped_presenter.IsMinimizable = self.interface.minimizable
-        overlapped_presenter.IsResizable = self.interface.resizable
+        # Set the restrictions.
+        presenter.IsMinimizable = self.interface.minimizable
+        presenter.IsResizable = self.interface.resizable
 
     ####################################################################################
     # Native event handlers.
@@ -149,9 +150,15 @@ class Window:
     # Window content and resources.
     ####################################################################################
 
-    def content_refreshed(self, container):
-        # TODO: Minimum size constraints: overlapped_presenter.PreferredMinimumWidth.
-        self.interface.factory.not_implemented("Window.content_refreshed")
+    def content_refreshed(self):
+        presenter, _ = self._presenter
+
+        if presenter.Kind != AppWindowPresenterKind.Overlapped:
+            return
+
+        min_size = self.min_size
+        presenter.PreferredMinimumWidth = min_size.width
+        presenter.PreferredMinimumHeight = min_size.height
 
     def set_content(self, widget):
         """Sets the content of the window's container to be the given Toga widget."""
@@ -171,7 +178,7 @@ class Window:
     ####################################################################################
 
     def get_size(self) -> Size:
-        """Gets the size of the window in effective pixels (CSS pixels)."""
+        """Gets the size of the window in CSS pixels (effective pixels)."""
         # self.native.Bounds returns values in effective pixels, but they are not always
         # integer values.
         return Size(
@@ -180,11 +187,40 @@ class Window:
         )
 
     def set_size(self, size: SizeT):
-        """Sets the size of the window in effective pixels (CSS pixels)."""
+        """Sets the size of the window in CSS pixels (effective pixels)."""
         css_to_physical = self.get_current_screen().css_to_physical
 
         self.native.AppWindow.Resize(
             SizeInt32(css_to_physical(size[0]), css_to_physical(size[1]))
+        )
+
+    @property
+    def min_size(self):
+        """The minimum size of the window in physical pixels (device pixels)."""
+        css_to_physical = self.get_current_screen().css_to_physical
+
+        # Window and client sizes are in physical pixels.
+        window_size = self.native.AppWindow.Size
+        client_size = self.native.AppWindow.ClientSize
+
+        # Menu, toolbar and layout values are in CSS pixels.
+        menu_native = getattr(self, "menu_native", None)
+        menu_height = menu_native.ActualSize.Y if menu_native else 0
+
+        toolbar_native = getattr(self, "toolbar_native", None)
+        toolbar_height = toolbar_native.ActualSize.Y if toolbar_native else 0
+
+        layout = self.interface.content.layout
+
+        # Compute the minimum values for the client area.
+        client_min_width = css_to_physical(layout.min_width)
+        client_min_height = css_to_physical(
+            layout.min_height + menu_height + toolbar_height
+        )
+
+        return Size(
+            window_size.Width - client_size.Width + client_min_width,
+            window_size.Height - client_size.Height + client_min_height,
         )
 
     ####################################################################################
@@ -205,6 +241,7 @@ class Window:
     #
     # TODO: Remove that assumption, and make Window.position return coordinates relative
     # to the current screen's origin and DPI.
+    # See: https://github.com/beeware/toga/issues/2947
     def get_position(self) -> Position:
         position = self.native.AppWindow.Position
         physical_to_css = App.app._impl.get_primary_screen().physical_to_css
@@ -234,6 +271,19 @@ class Window:
     # Window state.
     ####################################################################################
 
+    @property
+    def _presenter(self):
+        raw_presenter = self.native.AppWindow.Presenter
+
+        if raw_presenter.Kind == AppWindowPresenterKind.Overlapped:
+            # Cast presenter as an instance of OverlappedPresenter.
+            return OverlappedPresenter(value=raw_presenter.value), raw_presenter
+        elif raw_presenter.Kind == AppWindowPresenterKind.FullScreen:
+            # Cast presenter as an instance of FullScreenPresenter.
+            return FullScreenPresenter(value=raw_presenter.value), raw_presenter
+        else:
+            raise ValueError("CompactOverlay is not a supported presenter type.")
+
     def get_window_state(self, in_progress_state=False) -> WindowState:
         """Gets the current state of the window.
 
@@ -241,25 +291,20 @@ class Window:
         :return: A WindowState constant determined by NORMAL, MAXIMIZED, MINIMIZED or
             PRESENTATION. FULLSCREEN is not supported.
         """
-        presenter = self.native.AppWindow.Presenter
+        presenter, _ = self._presenter
 
         if presenter.Kind == AppWindowPresenterKind.FullScreen:
             # Fullscreen here corresponds to Toga 'PRESENTATION' window state. From the
             # Microsoft documentation: 'The window does not have a border or title bar,
-            # and hides the system task bar.
+            # and hides the system task bar.'
             # learn.microsoft.com/en-us/windows/apps/develop/ui/manage-app-windows
             return WindowState.PRESENTATION
         else:
             # Assume presenter.Kind == AppWindowPresenterKind.Overlapped, since the
             # third alternative 'CompactOverlay' is not implemented by Toga.
-            # learn.microsoft.com/en-us/windows/apps/develop/ui/manage-app-windows
-            #
-            # Hence, cast presenter as an instance of OverlappedPresenter.
-            overlapped_presenter = OverlappedPresenter(value=presenter.value)
-
-            if overlapped_presenter.State == OverlappedPresenterState.Maximized:
+            if presenter.State == OverlappedPresenterState.Maximized:
                 return WindowState.MAXIMIZED
-            elif overlapped_presenter.State == OverlappedPresenterState.Minimized:
+            elif presenter.State == OverlappedPresenterState.Minimized:
                 return WindowState.MINIMIZED
             else:
                 return WindowState.NORMAL
@@ -296,13 +341,10 @@ class Window:
 
     def get_image_data(self):
         self.interface.factory.not_implemented("Window.get_image_data")
+        # Windows.Graphics.Capture
 
 
 class MainWindow(Window):
-    def create(self):
-        super().create()
-        self.toolbar_native = None
-
     def create_content(self):
         # Row 0 is allocated for the menu
         # Row 1 is allocated for toolbar
@@ -320,7 +362,7 @@ class MainWindow(Window):
         Grid.SetColumn(self.container_native, 0)
         self.content_native.Children.Append(self.container_native)
 
-        self.container = Container(self.container_native)
+        self.container = Container(self.container_native, self.content_refreshed)
 
         # Attach the content to the window.
         self.native.Content = self.content_native
