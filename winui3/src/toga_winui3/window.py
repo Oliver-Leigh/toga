@@ -27,7 +27,24 @@ from win32more.Microsoft.UI.Xaml.Controls import (
 )
 from win32more.Microsoft.UI.Xaml.Media import MicaBackdrop
 from win32more.Windows.Graphics import PointInt32, SizeInt32
+from win32more.Windows.Win32.UI.WindowsAndMessaging import (
+    MF_BYCOMMAND,
+    MF_DISABLED,
+    MF_ENABLED,
+    MF_GRAYED,
+    SC_CLOSE,
+    EnableMenuItem,
+    GetSystemMenu,
+)
 
+########################################################################################
+# FIXME: Microsoft.Ui.Interop functionality will be included in a future win32more
+# release. Update this code and the flagged code below when that happens.
+# https://github.com/ynkdir/py-win32more/issues/184
+from winui3.microsoft.ui import WindowId
+from winui3.microsoft.ui.interop import get_window_from_window_id
+
+########################################################################################
 from toga import App
 from toga.command import Separator
 from toga.constants import WindowState
@@ -48,6 +65,14 @@ class Window:
         self.is_activated = False
         self.create()
 
+        # From a native WinUI 3 point of view, presentation mode is indistinguishable
+        # from fullscreen mode. Use this variable to distinguish between them.
+        self._in_presentation_mode = False
+
+        # In WinUI 3 a minimized window is not considered visible. This variable keeps
+        # track of this property.
+        self._visible = self.native.Visible
+
         self._set_restrictions()
         self.set_title(title)
         self.set_size(size)
@@ -62,17 +87,28 @@ class Window:
     def create(self):
         self.native = App.app._impl.native_instance.CreateWindow()
         self.native.SystemBackdrop = MicaBackdrop()
+
+        # Match the title bar theme to the app.
         self.native.AppWindow.TitleBar.PreferredTheme = TitleBarTheme.UseDefaultAppMode
 
         # TODO: Decide if these event handlers need to be a weak reference.
         self.native.Activated += self.native_event_activated
         self.native.AppWindow.Changed += self.native_event_changed
+        self.native.AppWindow.Closing += self.native_event_closing
 
     def create_content(self):
         """Construct the container."""
         self.container_native = Canvas()
         self.container = Container(self.container_native, self.content_refreshed)
         self.native.Content = self.container_native
+
+    @property
+    def _hwnd(self):
+        ################################################################################
+        # FIXME: See interop note above.
+        window_id = WindowId(self.native.AppWindow.Id.Value)
+        return get_window_from_window_id(window_id)
+        ################################################################################
 
     def _set_restrictions(self):
         """Sets the window properties of being minimizable and resizable."""
@@ -84,6 +120,22 @@ class Window:
         # Set the restrictions.
         presenter.IsMinimizable = self.interface.minimizable
         presenter.IsResizable = self.interface.resizable
+
+        if self.interface.closable:
+            self._enable_close_button()
+        else:
+            self._disable_close_button()
+
+    def _disable_close_button(self):
+        # The close button is controlled by the system menu and not the title bar. For
+        # an explanation see:
+        # https://devblogs.microsoft.com/oldnewthing/20100604-00/?p=13803
+        hmenu = GetSystemMenu(self._hwnd, False)
+        EnableMenuItem(hmenu, SC_CLOSE, MF_BYCOMMAND | MF_DISABLED | MF_GRAYED)
+
+    def _enable_close_button(self):
+        hmenu = GetSystemMenu(self._hwnd, False)
+        EnableMenuItem(hmenu, SC_CLOSE, MF_BYCOMMAND | MF_ENABLED)
 
     ####################################################################################
     # Native event handlers.
@@ -108,13 +160,33 @@ class Window:
             self.interface.on_resize()
 
         if args.DidVisibilityChange:
+            # Minimize is not considered visible but it also doesn't trigger this event.
             if self.native.AppWindow.IsVisible:
+                self._visible = True
                 self.interface.on_show()
             else:
+                self._visible = False
                 self.interface.on_hide()
 
         if args.DidPresenterChange:
             self._set_restrictions()
+
+    def native_event_closing(self, sender, args):
+        # Note: This event is raised when clicking on the close button, but not when
+        # self.native.Close() is called.
+
+        if not self.interface.app._impl._is_exiting:
+            # In this branch the close request is cancelled and the on_close() method is
+            # called. on_close() determines whether a close should occur and then, if
+            # appropriate, it will programmatically close the window and remove this
+            # handler.
+            args.Cancel = True
+            self.interface.on_close()
+
+        else:  # pragma: no cover
+            # In this branch the app is exiting and the window will close. This can't be
+            # triggered in test conditions, so it is as marked no-cover.
+            pass
 
     ####################################################################################
     # Window properties
@@ -133,7 +205,8 @@ class Window:
     ####################################################################################
 
     def close(self):
-        self.interface.factory.not_implemented("Window.close")
+        # The native event `Closing` is not called when the Close() method is called
+        # programmatically.
         self.native.Close()
 
     def set_app(self, app):
@@ -144,6 +217,7 @@ class Window:
         if self.interface.content is not None:
             self.interface.content.refresh()
 
+        self._visible = True
         self.native.AppWindow.Show()
 
     ####################################################################################
@@ -261,10 +335,11 @@ class Window:
 
     def get_visible(self) -> bool:
         """Returns True if the window is visible and False otherwise."""
-        return self.native.Visible
+        return self._visible
 
     def hide(self):
         """Hides but does not destroy the window."""
+        self._visible = False
         self.native.Hide()
 
     ####################################################################################
@@ -288,8 +363,8 @@ class Window:
         """Gets the current state of the window.
 
         :param in_progress_state: Not supported on WinUI 3.
-        :return: A WindowState constant determined by NORMAL, MAXIMIZED, MINIMIZED or
-            PRESENTATION. FULLSCREEN is not supported.
+        :return: A WindowState constant determined by NORMAL, MAXIMIZED, MINIMIZED,
+            FULLSCREEN or PRESENTATION.
         """
         presenter, _ = self._presenter
 
@@ -298,7 +373,10 @@ class Window:
             # Microsoft documentation: 'The window does not have a border or title bar,
             # and hides the system task bar.'
             # learn.microsoft.com/en-us/windows/apps/develop/ui/manage-app-windows
-            return WindowState.PRESENTATION
+            if self._in_presentation_mode:
+                return WindowState.PRESENTATION
+            else:
+                return WindowState.FULLSCREEN
         else:
             # Assume presenter.Kind == AppWindowPresenterKind.Overlapped, since the
             # third alternative 'CompactOverlay' is not implemented by Toga.
@@ -312,28 +390,72 @@ class Window:
     def set_window_state(self, state: WindowState):
         """Sets the state of the window.
 
-        :state: A WindowState constant determined by NORMAL, MAXIMIZED, MINIMIZED or
-            PRESENTATION. FULLSCREEN is not supported and will revert to MAXIMIZED.
+        :state: A WindowState constant determined by NORMAL, MAXIMIZED, MINIMIZED
+            FULLSCREEN or PRESENTATION.
         """
-        current_state = self.get_window_state()
+        # If the app is in presentation mode, but this window isn't, then exit app
+        # presentation mode before setting the requested state — unless we're
+        # entering presentation mode ourselves (to allow multiple windows).
+        if state != WindowState.PRESENTATION and any(
+            window.state == WindowState.PRESENTATION
+            for window in self.interface.app.windows
+            if window != self.interface
+        ):
+            self.interface.app.exit_presentation_mode()
 
-        if state == current_state:
+        print("set_window_state")
+        from_state = self.get_window_state()
+        print(f"from_state:{from_state}")
+        if from_state == state:
             return
-        elif current_state == WindowState.PRESENTATION:
-            self.native.AppWindow.SetPresenter(AppWindowPresenterKind.Overlapped)
+
+        from_overlapped = from_state not in {
+            WindowState.FULLSCREEN,
+            WindowState.PRESENTATION,
+        }
+        to_overlapped = state not in {WindowState.FULLSCREEN, WindowState.PRESENTATION}
+
+        if from_overlapped and not to_overlapped:
+            # Change from overlapped presenter to fullscreen presenter.
+            self.native.AppWindow.SetPresenterByKind(AppWindowPresenterKind.FullScreen)
+
+        elif not from_overlapped and to_overlapped:
+            # Change from fullscreen presenter to overlapped presenter.
+            self.native.AppWindow.SetPresenterByKind(AppWindowPresenterKind.Overlapped)
+
+        if state == WindowState.PRESENTATION:
+            self._in_presentation_mode = True
+            if hasattr(self, "menu_native"):
+                self.menu_native.Visible = False
+
+            if hasattr(self, "toolbar_native"):
+                self.toolbar_native.Visible = False
+
+            return
+
+        self._in_presentation_mode = False
+        if hasattr(self, "menu_native"):
+            self.menu_native.Visible = True
+
+        if hasattr(self, "toolbar_native"):
+            self.toolbar_native.Visible = True
 
         match state:
-            case WindowState.PRESENTATION:
-                self.native.AppWindow.SetPresenter(AppWindowPresenterKind.FullScreen)
-
             case WindowState.NORMAL:
-                self.native.AppWindow.Presenter.Restore()
+                presenter, _ = self._presenter
+                presenter.Restore()
 
             case WindowState.MINIMIZED:
-                self.native.AppWindow.Presenter.Minimize()
+                presenter, _ = self._presenter
+                presenter.Minimize()
+
+            case WindowState.MAXIMIZED:
+                presenter, _ = self._presenter
+                presenter.Maximize()
 
             case _:
-                self.native.AppWindow.Presenter.Maximize()
+                # WindowState.FULLSCREEN
+                pass
 
     ####################################################################################
     # Window capabilities
