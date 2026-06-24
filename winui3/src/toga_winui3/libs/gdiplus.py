@@ -1,34 +1,30 @@
-from ctypes import POINTER, WinError, byref
+from ctypes import POINTER, WinError, byref, cast
+from ctypes.wintypes import UINT
 
+import win32more.Windows.Win32.Graphics.GdiPlus as gdi_plus
 from win32more import String
 from win32more.Windows.Win32.Foundation import BOOL, UIntPtr
 from win32more.Windows.Win32.Graphics.GdiPlus import (
     FontStyleBold,
     FontStyleBoldItalic,
     FontStyleItalic,
-    # GDI+ Fonts
     FontStyleRegular,
     FontStyleStrikeout,
     FontStyleUnderline,
-    # GDI+ Icons
-    GdipCreateBitmapFromFile,
-    GdipCreateFontFamilyFromName,
-    GdipCreateHICONFromBitmap,
-    GdipIsStyleAvailable,
-    # Main GDI+ operations
-    GdiplusShutdown,
-    GdiplusStartup,
     GdiplusStartupInput,
     GdiplusStartupOutput,
     GpBitmap,
     GpFontFamily,
+    GpImage,
 )
 from win32more.Windows.Win32.UI.WindowsAndMessaging import HICON
 
 ########################################################################################
-# Main GDI+ operations
+# GDI+ return status processing.
 ########################################################################################
 
+# https://learn.microsoft.com/en-us/windows/win32/gdiplus/-gdiplus-flatapi-flat
+# https://learn.microsoft.com/windows/win32/api/Gdiplustypes/ne-gdiplustypes-status
 status_dict = {
     0: "Ok",
     1: "GenericError",
@@ -55,6 +51,28 @@ status_dict = {
 }
 
 
+def gdi_plus_function(function):
+    def wrapper(*args, **kwargs):
+        status_code = function(*args, **kwargs)
+        if status_code != 0 and status_code is not None:
+            global status_dict
+            error = str(status_dict[status_code])
+            message = f"The GDI+ function {function.__name__} exit with status {error}."
+
+            raise WinError(descr=message)
+
+    return wrapper
+
+
+########################################################################################
+# GDI+ context manager.
+########################################################################################
+
+# Wrap functions to check exit status code.
+GdiplusStartup = gdi_plus_function(gdi_plus.GdiplusStartup)
+GdiplusShutdown = gdi_plus_function(gdi_plus.GdiplusShutdown)
+
+
 class GdiPlusContext:
     """A context manager for running GdiPlus functions."""
 
@@ -69,16 +87,7 @@ class GdiPlusContext:
         self._output = GdiplusStartupOutput()
 
     def __enter__(self):
-        status = GdiplusStartup(
-            byref(self._token),
-            byref(self._input),
-            byref(self._output),
-        )
-
-        if status != 0:
-            raise WinError(
-                descr=f"GdiplusStartup failed with code: {status_dict[status]}"
-            )
+        GdiplusStartup(byref(self._token), byref(self._input), byref(self._output))
 
     def __exit__(self, exc_type, exc_value, traceback):
         GdiplusShutdown(self._token)
@@ -94,9 +103,6 @@ gdi_plus_context = GdiPlusContext()
 # GDI+ fonts
 ########################################################################################
 
-FontFamilyPtr = POINTER(GpFontFamily)
-
-
 ALL_FONT_STYLES = (
     FontStyleRegular
     | FontStyleBold
@@ -105,6 +111,14 @@ ALL_FONT_STYLES = (
     | FontStyleUnderline
     | FontStyleStrikeout
 )
+
+
+FontFamilyPtr = POINTER(GpFontFamily)
+
+
+# Wrap functions to check exit status code.
+GdipCreateFontFamilyFromName = gdi_plus_function(gdi_plus.GdipCreateFontFamilyFromName)
+GdipIsStyleAvailable = gdi_plus_function(gdi_plus.GdipIsStyleAvailable)
 
 
 def is_font_installed(font_family_name: str):
@@ -122,7 +136,9 @@ def is_font_installed(font_family_name: str):
 
         # Attempt to create the font family.
         GdipCreateFontFamilyFromName(
-            String(font_family_name), None, byref(font_family_ptr)
+            String(font_family_name),
+            None,
+            byref(font_family_ptr),
         )
 
         # Check if the font family has been created.
@@ -136,6 +152,16 @@ def is_font_installed(font_family_name: str):
 ########################################################################################
 
 BitmapPtr = POINTER(GpBitmap)
+ImagePtr = POINTER(GpImage)
+
+
+# Wrap functions to check exit status code.
+GdipCreateBitmapFromFile = gdi_plus_function(gdi_plus.GdipCreateBitmapFromFile)
+GdipCreateBitmapFromHICON = gdi_plus_function(gdi_plus.GdipCreateBitmapFromHICON)
+GdipCreateHICONFromBitmap = gdi_plus_function(gdi_plus.GdipCreateHICONFromBitmap)
+GdipBitmapGetPixel = gdi_plus_function(gdi_plus.GdipBitmapGetPixel)
+GdipGetImageHeight = gdi_plus_function(gdi_plus.GdipGetImageHeight)
+GdipGetImageWidth = gdi_plus_function(gdi_plus.GdipGetImageWidth)
 
 
 def create_icon(icon_path: str) -> HICON:
@@ -143,21 +169,41 @@ def create_icon(icon_path: str) -> HICON:
     bitmap_ptr = BitmapPtr()
     icon_handle = HICON()
 
-    bitmap_status = 1
-    handle_status = 1
     with gdi_plus_context:
-        bitmap_status = GdipCreateBitmapFromFile(String(icon_path), byref(bitmap_ptr))
-        handle_status = GdipCreateHICONFromBitmap(bitmap_ptr, byref(icon_handle))
-
-    if bitmap_status != 0 or handle_status != 0:
-        message = f"Unable to create icon bitmap from {icon_path}.\n"
-        if bitmap_status != 0:
-            message += "GdipCreateBitmapFromFile code: "
-            message += str(status_dict[bitmap_status])
-        else:
-            message += "GdipCreateHICONFromBitmap code: "
-            message += str(status_dict[handle_status])
-
-        raise ValueError(message)
+        GdipCreateBitmapFromFile(String(icon_path), byref(bitmap_ptr))
+        GdipCreateHICONFromBitmap(bitmap_ptr, byref(icon_handle))
 
     return icon_handle
+
+
+def color_to_rgba(color):
+    return (
+        (color >> 16) & 0b11111111,  # Red
+        (color >> 8) & 0b11111111,  # Green
+        color & 0b11111111,  # Blue
+        (color >> 24) & 0b11111111,  # Alpha
+    )
+
+
+def icon_pixels(icon_handle: HICON):
+    bitmap_ptr = BitmapPtr()
+    pixel_array = []
+
+    with gdi_plus_context:
+        GdipCreateBitmapFromHICON(icon_handle, byref(bitmap_ptr))
+        image_ptr = cast(bitmap_ptr, ImagePtr)
+
+        width = UINT()
+        height = UINT()
+        GdipGetImageWidth(image_ptr, byref(width))
+        GdipGetImageHeight(image_ptr, byref(height))
+
+        color = UINT()
+        for x in range(width.value):
+            pixel_array.append([])
+            for y in range(height.value):
+                GdipBitmapGetPixel(bitmap_ptr, x, y, byref(color))
+                argb = color_to_rgba(color.value)
+                pixel_array[x].append(argb)
+
+    return pixel_array
