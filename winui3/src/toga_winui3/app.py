@@ -1,4 +1,5 @@
 from win32more import String
+from win32more.Microsoft.UI.Input import InputSystemCursor, InputSystemCursorShape
 from win32more.Microsoft.UI.Windowing import DisplayArea
 from win32more.Microsoft.UI.Xaml import ApplicationTheme
 from win32more.Windows.Win32.Media.Audio import SND_ALIAS, SND_ASYNC, PlaySound
@@ -22,11 +23,6 @@ class App:
         # Track whether the app is exiting.
         self._is_exiting = False
         self._exiting_presentation = False
-
-        # The Win32 function ShowCursor is used to show and hide the cursor. Here cursor
-        # visibility is represented by a display count. For example, if hide is called N
-        # times then to make the cursor re-appear, show must be called N times as well.
-        # Hence, a local boolean is stored to avoid a deep stack.
         self._cursor_visible = True
 
         self.loop = WinUI3ProactorEventLoop()
@@ -74,8 +70,8 @@ class App:
         self.loop.run_forever(self)
 
     def set_icon(self, icon):
-        # Icons are set in Window.set_app().
-        pass
+        for window in self.interface.windows:
+            window._impl.set_app(self)
 
     def set_main_window(self, window):
         # Everything is already handled by the Toga core interface.
@@ -124,15 +120,37 @@ class App:
 
     ####################################################################################
     # Cursor control
+    #
+    # To show/hide the cursor for the entire app, a combination of the Win32 function
+    # ShowCursor and the WinUI 3 property ProtectedCursor is used:
+    #   - ShowCursor: Only works on the non-client area i.e. title bar, etc.
+    #   - ProtectedCursor: Only works on UIElement descendants  e.g. Panels.
+    #
     ####################################################################################
 
     def hide_cursor(self):
-        # learn.microsoft.com/windows/win32/api/winuser/nf-winuser-showcursor
+        if not self._cursor_visible:
+            return
+
+        self._cursor_visible = False
         ShowCursor(False)
 
+        for window in self.interface.windows:
+            # The idea to hide the cursor by disposing of it comes from:
+            # https://github.com/microsoft/WindowsAppSDK/discussions/3601
+            placeholder_cursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow)
+            window._impl.native.Content.ProtectedCursor = placeholder_cursor
+            placeholder_cursor.Close()
+
     def show_cursor(self):
-        # learn.microsoft.com/windows/win32/api/winuser/nf-winuser-showcursor
+        if self._cursor_visible:
+            return
+
+        self._cursor_visible = True
         ShowCursor(True)
+
+        for window in self.interface.windows:
+            window._impl.native.Content.ProtectedCursor = None
 
     ####################################################################################
     # Window control

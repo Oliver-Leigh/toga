@@ -340,7 +340,7 @@ class Window:
     def hide(self):
         """Hides but does not destroy the window."""
         self._visible = False
-        self.native.Hide()
+        self.native.AppWindow.Hide()
 
     ####################################################################################
     # Window state.
