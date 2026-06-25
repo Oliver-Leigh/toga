@@ -1,9 +1,5 @@
 from travertino.size import at_least
-from win32more.Microsoft.UI.Xaml.Controls import (
-    Button as NativeButton,
-    Symbol,
-    SymbolIcon,
-)
+from win32more.Microsoft.UI.Xaml.Controls import Button as NativeButton
 
 from .base import Widget
 
@@ -50,9 +46,7 @@ class Button(Widget):
         self._staged_properties.Content = self.icon
 
     def icon(self):
-        symbol_icon = SymbolIcon()
-        symbol_icon.Symbol = Symbol.Document
-        return symbol_icon
+        return self._icon._impl.image_icon
 
     ####################################################################################
     # Overrides of methods called by the Toga style applicator.
