@@ -57,7 +57,8 @@ def gdi_plus_function(function):
         if status_code != 0 and status_code is not None:
             global status_dict
             error = str(status_dict[status_code])
-            message = f"The GDI+ function {function.__name__} exit with status {error}."
+            function_name = str(function._prototype.__name__)
+            message = f"The GDI+ function {function_name} exit with status {error}."
 
             raise WinError(descr=message)
 
@@ -134,15 +135,21 @@ def is_font_installed(font_family_name: str):
         font_family_ptr = FontFamilyPtr()
         font_available = BOOL()
 
-        # Attempt to create the font family.
-        GdipCreateFontFamilyFromName(
-            String(font_family_name),
-            None,
-            byref(font_family_ptr),
-        )
+        try:
+            # Attempt to create the font family.
+            GdipCreateFontFamilyFromName(
+                String(font_family_name),
+                None,
+                byref(font_family_ptr),
+            )
 
-        # Check if the font family has been created.
-        GdipIsStyleAvailable(font_family_ptr, ALL_FONT_STYLES, byref(font_available))
+            # Check if the font family has been created.
+            GdipIsStyleAvailable(
+                font_family_ptr, ALL_FONT_STYLES, byref(font_available)
+            )
+
+        except OSError:
+            return False
 
     return font_available.value == 1
 

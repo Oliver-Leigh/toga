@@ -108,11 +108,9 @@ class Font:
             msg = f"{self.interface} not a user-registered font"
             raise UnknownFontError(msg) from exc
 
-        self.interface.factory.not_implemented("Font.load_user_registered_font()")
-        print(f"Font with path {font_path} not loaded.")
-        ################################################################################
-        # TODO: Need to understand how to load external resources.
-        ################################################################################
+        raise ValueError(
+            f"Couldn't load {font_path}. User registered fonts are not implemented yet."
+        )
 
     def load_arbitrary_system_font(self):
         """Use a font available on the system."""
@@ -120,7 +118,7 @@ class Font:
 
         # WinUI 3 does not throw an exception if the font is not installed, so use GDI+.
         if not font_installed:
-            raise ValueError(
+            raise UnknownFontError(
                 f"{self.interface} not installed on system. Check that the font family "
                 + "name exactly matches the name in the system's font settings."
             )
