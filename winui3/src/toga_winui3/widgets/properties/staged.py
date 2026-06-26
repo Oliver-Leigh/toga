@@ -34,28 +34,28 @@ class StagingArea:
 
         :param container: The Container where the StagingArea will be attached.
         """
-        self._native = RelativePanel()
-        self._native.Visible = False
+        self.native = RelativePanel()
+        self.native.Opacity = 0
 
         self._native_widgets = []
 
         # Add the container
         self._container = container
-        self._container.native.Children.InsertAt(0, self._native)
+        self._container.widgets.add(self)
 
     def add(self, native_widget):
         self._native_widgets.append(native_widget)
-        self._native.Children.Append(native_widget)
+        self.native.Children.Append(native_widget)
 
-    def remove(self, widget):
+    def remove(self, native_widget):
         """Removes a widget and triggers a layout refresh when the widget list empties.
 
         The refresh mechanism here is to avoid excessive refresh calls.
         """
         non_empty_initial = len(self._native_widgets) > 0
-        index = self._native_widgets.index(widget)
-        self._native_widgets.remove(widget)
-        self._native.Children.RemoveAt(index)
+        index = self._native_widgets.index(native_widget)
+        self._native_widgets.remove(native_widget)
+        self.native.Children.RemoveAt(index)
         empty_final = len(self._native_widgets) == 0
 
         if non_empty_initial and empty_final:
@@ -66,7 +66,6 @@ class StagingArea:
 class StagedProperties:
     def __init__(self, widget):
         self._widget = widget
-        self._duplicate = None
         self._staged_properties = {}
 
         self._font_keys = {"FontFamily", "FontSize", "FontStyle", "FontWeight"}
@@ -103,20 +102,23 @@ class StagedProperties:
             return
 
         widget = self._widget
-        self._duplicate = type(widget.native)()
-        self._duplicate.SizeChanged += self.native_event_size_changed
+        duplicate = type(widget.native)()
+
+        def size_changed(sender, args, duplicate=duplicate):
+            self.native_event_size_changed(sender, args, duplicate)
+
+        duplicate.SizeChanged += size_changed
 
         for attribute, value_creator in self._staged_properties.items():
             value = value_creator()
             if value is not None:
-                setattr(self._duplicate, attribute, value)
+                setattr(duplicate, attribute, value)
 
-        widget.container.staging_area.add(self._duplicate)
+        widget.container.staging_area.add(duplicate)
 
-    def native_event_size_changed(self, sender, args):
-        self._widget._min_width = self._duplicate.ActualSize.X
-        self._widget._min_height = self._duplicate.ActualSize.Y
+    def native_event_size_changed(self, sender, args, duplicate):
+        self._widget._min_width = duplicate.ActualSize.X
+        self._widget._min_height = duplicate.ActualSize.Y
         self._widget.rehint()
 
-        self._widget.container.staging_area.remove(self._duplicate)
-        self._duplicate = None
+        self._widget.container.staging_area.remove(duplicate)
