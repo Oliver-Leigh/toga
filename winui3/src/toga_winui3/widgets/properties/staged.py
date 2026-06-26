@@ -1,4 +1,5 @@
 from win32more.Microsoft.UI.Xaml.Controls import RelativePanel
+from win32more.Windows.UI.Text import FontStyle
 
 """
 Overview of content staging
@@ -67,6 +68,7 @@ class StagedProperties:
     def __init__(self, widget):
         self._widget = widget
         self._staged_properties = {}
+        self._latest = None
 
         self._font_keys = {"FontFamily", "FontSize", "FontStyle", "FontWeight"}
 
@@ -103,6 +105,7 @@ class StagedProperties:
 
         widget = self._widget
         duplicate = type(widget.native)()
+        self._latest = duplicate
 
         def size_changed(sender, args, duplicate=duplicate):
             self.native_event_size_changed(sender, args, duplicate)
@@ -117,8 +120,20 @@ class StagedProperties:
         widget.container.staging_area.add(duplicate)
 
     def native_event_size_changed(self, sender, args, duplicate):
-        self._widget._min_width = duplicate.ActualSize.X
-        self._widget._min_height = duplicate.ActualSize.Y
-        self._widget.rehint()
+        if duplicate == self._latest:
+            self._widget._min_width = self._adjusted_width(duplicate)
+            self._widget._min_height = duplicate.ActualSize.Y
+            self._widget.rehint()
+
+            self._latest = None
 
         self._widget.container.staging_area.remove(duplicate)
+
+    def _adjusted_width(self, duplicate):
+        # The staging method doesn't calculate a large enough width for italic and
+        # oblique font styles. Add 0.25em for each of these.
+        if duplicate.FontStyle in {FontStyle.Oblique, FontStyle.Italic}:
+            font_size = duplicate.FontSize
+            return duplicate.ActualSize.X + round(font_size * 96 / 72 / 4, 0)
+
+        return duplicate.ActualSize.X
