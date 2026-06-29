@@ -130,8 +130,8 @@ class StagedProperties:
         self._widget.container.staging_area.remove(duplicate)
 
     def _adjusted_width(self, duplicate):
-        # The staging method doesn't calculate a large enough width for italic and
-        # oblique font styles. Add 0.25em for each of these.
+        # FIXME: The staging method doesn't calculate a large enough width for italic
+        # and oblique font styles. Add 0.25em for each of these.
         if duplicate.FontStyle in {FontStyle.Oblique, FontStyle.Italic}:
             font_size = duplicate.FontSize
             return duplicate.ActualSize.X + round(font_size * 96 / 72 / 4, 0)

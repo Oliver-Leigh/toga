@@ -5,6 +5,13 @@ from win32more.Microsoft.UI.Xaml.Controls import (
     ColumnDefinition,
     RowDefinition,
 )
+from win32more.Windows.Win32.Foundation import PWSTR
+from win32more.Windows.Win32.UI.WindowsAndMessaging import (
+    HICON,
+    IMAGE_ICON,
+    LR_LOADFROMFILE,
+    LoadImageW,
+)
 
 
 def grid_length_auto():
@@ -63,3 +70,11 @@ def get_x_lparam(lparam: int) -> int:
 # https://learn.microsoft.com/en-us/windows/win32/api/windowsx/nf-windowsx-get_y_lparam
 def get_y_lparam(lparam: int) -> int:
     return SHORT(hiword(lparam)).value
+
+
+def load_icon(path: str) -> HICON:
+    """Creates an icon resource from an .ico file."""
+    hwnd = LoadImageW(None, PWSTR(path), IMAGE_ICON, 0, 0, LR_LOADFROMFILE)
+    if hwnd is None:
+        raise OSError(f"LoadImageW failed to load {path}.")
+    return HICON(hwnd)

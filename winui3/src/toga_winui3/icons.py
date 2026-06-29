@@ -14,10 +14,11 @@ from winui3.microsoft.ui.interop import get_icon_id_from_icon
 
 ########################################################################################
 from .libs.gdiplus import create_icon
+from .libs.misc import load_icon
 
 
 class Icon:
-    EXTENSIONS = [".png", ".bmp"]
+    EXTENSIONS = [".png", ".ico", ".bmp", ".jpg", ".jpeg", ".gif", ".tif", ".tiff"]
     SIZES = None
 
     def __init__(self, interface, path):
@@ -27,7 +28,9 @@ class Icon:
         self._bitmap_image: None | BitmapImage = None
 
         if path is None:
-            self.path = Path(__file__).parent / "resources" / "toga.png"
+            raise ValueError(
+                f"Unable to use path={path}. The app bundle icon is not implemented."
+            )
         else:
             self.path = Path(path)
 
@@ -35,11 +38,24 @@ class Icon:
     def uri(self) -> Uri:
         return Uri(f"file:///{self.path.as_posix()}")
 
+    def _use_default_icon(self, property):
+        print(
+            f"WARNING: Unable to load icon {self.path}; falling back to default icon."
+        )
+        self.path = Path(__file__).parent / "resources" / "toga.png"
+        return getattr(self, property)
+
     @property
     def handle(self) -> HICON:
         """The handle to the Win32 icon object created using the icon's path."""
         if self._handle is None:
-            self._handle = create_icon(str(self.path))
+            try:
+                if self.path.suffix != ".ico":
+                    self._handle = create_icon(str(self.path))
+                else:
+                    self._handle = load_icon(str(self.path))
+            except OSError:
+                return self._use_default_icon("handle")
 
         return self._handle
 
@@ -60,9 +76,13 @@ class Icon:
         """The WinUI 3 BitmapImage used as a source for the icon."""
         if self._bitmap_image is None:
             self._bitmap_image = BitmapImage()
+            self._bitmap_image.ImageFailed += self.native_event_image_failed
             self._bitmap_image.UriSource = self.uri
 
         return self._bitmap_image
+
+    def native_event_image_failed(self, sender, args):
+        self._bitmap_image.UriSource = self._use_default_icon("uri")
 
     @property
     def image_icon(self):
