@@ -10,15 +10,15 @@ from win32more.Microsoft.UI.Xaml.Controls import (
 )
 from win32more.Windows.Foundation import Point
 from win32more.Windows.Graphics import PointInt32, SizeInt32
-from win32more.Windows.Win32.Foundation import POINT, RECT
+from win32more.Windows.Win32.Foundation import POINT
 from win32more.Windows.Win32.Graphics.Gdi import ScreenToClient
 from win32more.Windows.Win32.UI.WindowsAndMessaging import (
     IDC_ARROW,
+    WM_APP,
+    WM_NCDESTROY,
     LoadCursorW,
     SetCursor,
     SetForegroundWindow,
-    WM_NCDESTROY,
-    WM_APP,
 )
 
 ########################################################################################
@@ -27,20 +27,19 @@ from win32more.Windows.Win32.UI.WindowsAndMessaging import (
 # https://github.com/ynkdir/py-win32more/issues/184
 from winui3.microsoft.ui import WindowId
 from winui3.microsoft.ui.interop import get_window_from_window_id
-########################################################################################
 
+########################################################################################
 from toga import App, Icon
 from toga.command import Group, Separator
 
 from .libs import win32constants as wc, win32structures as ws
 from .libs.comctl32 import (
-    DefSubclassProc, 
-    RemoveWindowSubclass, 
-    SetWindowSubclass, 
+    DefSubclassProc,
+    RemoveWindowSubclass,
+    SetWindowSubclass,
 )
+from .libs.misc import get_x_lparam, get_y_lparam, loword
 from .libs.shell import Shell_NotifyIconW
-from .libs.misc import loword, get_x_lparam, get_y_lparam
-
 
 
 class StatusIcon:
@@ -54,24 +53,24 @@ class StatusIcon:
             Shell_NotifyIconW(wc.NIM_MODIFY, byref(notify_icon_data))
 
     def create(self):
+        # Create a WinUI 3 Window instance to receive the messages.
         self.native_window = App.app._impl.native_instance.CreateWindow()
 
-
+        # Hide the Window.
         self.native_window.AppWindow.Resize(SizeInt32(1, 1))
         self.native_window.AppWindow.Move(PointInt32(wc.SHRT_MAX - 1, wc.SHRT_MAX - 1))
         self.native_window.AppWindow.IsShownInSwitchers = False
 
         presenter = self.native_window.AppWindow.Presenter
         overlapped_presenter = OverlappedPresenter(value=presenter.value)
-
         overlapped_presenter.SetBorderAndTitleBar(False, False)
         overlapped_presenter.IsAlwaysOnTop = True
-        
 
-        # Subclass the native_window to recieve the WM_COMMAND messages. 
+        # Subclass the native_window to receive the WM_COMMAND messages.
         self._pfn_subclass = ws.SUBCLASSPROC(self._subclass_proc)
         SetWindowSubclass(self._hwnd, self._pfn_subclass, 0, 0)
 
+        # Set the icon.
         icon_handle = self._icon_handle(self.interface.icon)
         notify_icon_data = self._notify_icon_data(icon_handle)
         Shell_NotifyIconW(wc.NIM_ADD, byref(notify_icon_data))
@@ -82,7 +81,7 @@ class StatusIcon:
 
     def _icon_handle(self, icon: Icon):
         return icon._impl.handle if icon else App.app.icon._impl.handle
-    
+
     def _notify_icon_data(self, icon_handle):
         """Creates a NOTIFYICONDATAW instance for a given icon."""
         notify_icon_data = ws.NOTIFYICONDATAW()
@@ -97,15 +96,17 @@ class StatusIcon:
     def remove(self):
         notify_icon_data = self._notify_icon_data(None)
         Shell_NotifyIconW(wc.NIM_DELETE, byref(notify_icon_data))
+        self.native_window.Close()
+        self.native_window = None
 
     @property
     def _hwnd(self):
         ################################################################################
-        # FIXME: See interop note above. 
+        # FIXME: See interop note above.
         window_id = WindowId(self.native_window.AppWindow.Id.Value)
         return get_window_from_window_id(window_id)
         ################################################################################
-    
+
     def _subclass_proc(
         self,
         hWnd: int,
@@ -127,24 +128,21 @@ class StatusIcon:
 
         # Call the original window procedure
         return DefSubclassProc(
-            wt.HWND(hWnd), 
-            wt.UINT(uMsg), 
-            wt.WPARAM(wParam), 
+            wt.HWND(hWnd),
+            wt.UINT(uMsg),
+            wt.WPARAM(wParam),
             wt.LPARAM(lParam),
         )
-    
-    def native_event_click(self, x, y):
-        ...
+
+    def native_event_click(self, x, y): ...
 
 
 class SimpleStatusIcon(StatusIcon):
-
     def native_event_click(self, x, y):
-        print(f"x:{x}, y:{y}")
+        self.interface.on_press()
 
 
 class MenuStatusIcon(StatusIcon):
-
     def __init__(self, interface):
         super().__init__(interface)
         self._native_menu = None
@@ -158,14 +156,14 @@ class MenuStatusIcon(StatusIcon):
     @property
     def native_menu(self):
         return self._native_menu
-    
+
     @native_menu.setter
     def native_menu(self, native_menu_instance: MenuFlyout):
         assert isinstance(native_menu_instance, MenuFlyout)
-        
+
         native_menu_instance.add_Closing(self.native_event_Closing)
         self._native_menu = native_menu_instance
-        
+
     def native_event_Closing(self, sender, args):
         self.native_window.AppWindow.Hide()
 
@@ -177,12 +175,14 @@ class MenuStatusIcon(StatusIcon):
     def native_event_click(self, x, y):
         coords = POINT(x, y)
         ScreenToClient(self._hwnd, byref(coords))
-        relative_coords = Point(coords.x/2, coords.y/2)
+        relative_coords = Point(coords.x / 2, coords.y / 2)
 
+        # Show the menu. The parent window must be visible for the menu to be visible.
         self.native_window.AppWindow.Show()
         SetForegroundWindow(self._hwnd)
         self.native_menu.ShowAt(self.native_content, relative_coords)
 
+        # Reload the standard cursor to prevent the busy cursor showing.
         h_cursor = LoadCursorW(None, IDC_ARROW)
         SetCursor(h_cursor)
 
@@ -191,7 +191,7 @@ class StatusIconSet:
     def __init__(self, interface):
         """The WinUI 3 implementation of an ordered collection of status icons."""
         self.interface = interface
-    
+
     def _submenu(self, group, group_cache):
         try:
             return group_cache[group]
@@ -210,10 +210,10 @@ class StatusIconSet:
         return submenu
 
     def create(self):
-        """Create 
-        
+        """Create
+
         This is called directly in App._startup() and also when the status icon command
-        set is changed. 
+        set is changed.
         """
 
         # Menu status icons are the only icons that have extra construction needs.
