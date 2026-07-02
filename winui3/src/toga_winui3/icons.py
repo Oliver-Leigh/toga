@@ -1,18 +1,12 @@
 from pathlib import Path
 
 from win32more.Microsoft.UI import IconId
+from win32more.Microsoft.UI.Interop import GetIconIdFromIcon
 from win32more.Microsoft.UI.Xaml.Controls import ImageIcon
 from win32more.Microsoft.UI.Xaml.Media.Imaging import BitmapImage
 from win32more.Windows.Foundation import Uri
 from win32more.Windows.Win32.UI.WindowsAndMessaging import HICON
 
-########################################################################################
-# FIXME: Microsoft.Ui.Interop functionality will be included in a future win32more
-# release. Update this code and the flagged code below when that happens.
-# https://github.com/ynkdir/py-win32more/issues/184
-from winui3.microsoft.ui.interop import get_icon_id_from_icon
-
-########################################################################################
 from .libs.gdiplus import create_icon
 from .libs.misc import load_icon
 
@@ -63,11 +57,7 @@ class Icon:
     def id(self) -> IconId:
         """The IconId to the WinRT icon object created using the icon's path."""
         if self._id is None:
-            ################################################################################
-            # FIXME: See interop note above.
-            icon_id = get_icon_id_from_icon(int(self.handle.value))
-            self._id = IconId(icon_id.value)
-            ################################################################################
+            self._id = GetIconIdFromIcon(self.handle)
 
         return self._id
 

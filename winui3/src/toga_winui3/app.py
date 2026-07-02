@@ -61,9 +61,7 @@ class App:
     ####################################################################################
 
     def exit(self):  # pragma: no cover
-        # FIXME: App doesn't shutdown correctly with self._is_exiting = True
         self._is_exiting = True
-        self.native.Exit(self.native_instance)
 
     def main_loop(self):
         self.create()

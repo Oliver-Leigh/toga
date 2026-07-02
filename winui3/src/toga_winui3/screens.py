@@ -2,18 +2,11 @@ from ctypes import byref
 from decimal import ROUND_HALF_EVEN, Decimal
 
 from travertino.size import at_least
+from win32more.Microsoft.UI.Interop import GetMonitorFromDisplayId
 from win32more.Windows.Win32.Graphics.Gdi import HMONITOR
 from win32more.Windows.Win32.UI.Shell import GetScaleFactorForMonitor
 from win32more.Windows.Win32.UI.Shell.Common import DEVICE_SCALE_FACTOR
 
-########################################################################################
-# FIXME: Microsoft.Ui.Interop functionality will be included in a future win32more
-# release. Update this code when that happens.
-# https://github.com/ynkdir/py-win32more/issues/184
-from winui3.microsoft.ui import DisplayId
-from winui3.microsoft.ui.interop import get_monitor_from_display_id
-
-########################################################################################
 from toga import App
 from toga.screens import Screen as ScreenInterface
 from toga.types import Position, Size
@@ -44,12 +37,7 @@ class Screen:
 
     @property
     def handle(self) -> HMONITOR:
-        ################################################################################
-        # FIXME: See interop note above.
-        return HMONITOR(
-            get_monitor_from_display_id(DisplayId(self.native.DisplayId.Value))
-        )
-        ################################################################################
+        return GetMonitorFromDisplayId(self.native.DisplayId)
 
     def get_name(self) -> str:
         device_id = str(self.native.DisplayId.Value)

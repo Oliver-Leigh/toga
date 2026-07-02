@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from win32more.Microsoft.UI.Interop import GetWindowFromWindowId
 from win32more.Microsoft.UI.Windowing import (
     AppWindowPresenterKind,
     DisplayArea,
@@ -37,14 +38,6 @@ from win32more.Windows.Win32.UI.WindowsAndMessaging import (
     GetSystemMenu,
 )
 
-########################################################################################
-# FIXME: Microsoft.Ui.Interop functionality will be included in a future win32more
-# release. Update this code and the flagged code below when that happens.
-# https://github.com/ynkdir/py-win32more/issues/184
-from winui3.microsoft.ui import WindowId
-from winui3.microsoft.ui.interop import get_window_from_window_id
-
-########################################################################################
 from toga import App
 from toga.command import Separator
 from toga.constants import WindowState
@@ -104,11 +97,7 @@ class Window:
 
     @property
     def _hwnd(self):
-        ################################################################################
-        # FIXME: See interop note above.
-        window_id = WindowId(self.native.AppWindow.Id.Value)
-        return get_window_from_window_id(window_id)
-        ################################################################################
+        return GetWindowFromWindowId(self.native.AppWindow.Id)
 
     def _set_restrictions(self):
         """Sets the window properties of being minimizable and resizable."""
