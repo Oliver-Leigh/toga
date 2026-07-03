@@ -74,12 +74,11 @@ class Icon:
     def native_event_image_failed(self, sender, args):
         self._bitmap_image.UriSource = self._use_default_icon("uri")
 
-    @property
-    def image_icon(self):
+    def image_icon(self, size=16):
         """The WinUI 3 icon implementation."""
         image_icon = ImageIcon()
-        image_icon.Height = 16
-        image_icon.Width = 16
+        image_icon.Height = size
+        image_icon.Width = size
         image_icon.Source = self.bitmap_image
 
         return image_icon

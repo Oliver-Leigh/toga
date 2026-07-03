@@ -1,6 +1,8 @@
 from travertino.size import at_least
 from win32more.Microsoft.UI.Xaml.Controls import Button as NativeButton
 
+from toga.constants import TRANSPARENT
+
 from .base import Widget
 
 
@@ -18,6 +20,10 @@ class Button(Widget):
 
     def native_event_click(self, sender, args):
         self.interface.on_press()
+
+    ####################################################################################
+    # Button content
+    ####################################################################################
 
     def get_text(self):
         return self._text
@@ -46,11 +52,15 @@ class Button(Widget):
         self._staged_properties.Content = self.icon
 
     def icon(self):
-        return self._icon._impl.image_icon
+        return self._icon._impl.image_icon(32)
 
     ####################################################################################
     # Overrides of methods called by the Toga style applicator.
     ####################################################################################
+
+    def set_background_color(self, color):
+        color = None if color is TRANSPARENT else color
+        super().set_background_color(color)
 
     def set_text_align(self, alignment):
         # FIXME: WinUI 3 has the ability to set the content alignment of a button, but
