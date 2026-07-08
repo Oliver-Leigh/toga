@@ -8,7 +8,7 @@ from .base import Widget
 
 class Button(Widget):
     def create(self):
-        self.native = NativeButton()
+        self.native_cls = NativeButton
         self._icon = None
         self._text = ""
 
@@ -16,7 +16,7 @@ class Button(Widget):
         self._min_width = 0
         self._min_height = 0
 
-        self.native.Click += self.native_event_click
+        self.native.event_handler.Click += self.native_event_click
 
     def native_event_click(self, sender, args):
         self.interface.on_press()

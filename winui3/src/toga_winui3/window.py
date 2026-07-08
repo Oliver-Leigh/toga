@@ -45,6 +45,7 @@ from toga.types import Position, Size
 
 from .container import Container
 from .libs.misc import column_definition_star, row_definition_auto, row_definition_star
+from .libs.nativeevents import events_handled
 from .screens import Screen as ScreenImpl, round_pixels
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -84,14 +85,13 @@ class Window:
         # Match the title bar theme to the app.
         self.native.AppWindow.TitleBar.PreferredTheme = TitleBarTheme.UseDefaultAppMode
 
-        # TODO: Decide if these event handlers need to be a weak reference.
-        self.native.Activated += self.native_event_activated
-        self.native.AppWindow.Changed += self.native_event_changed
-        self.native.AppWindow.Closing += self.native_event_closing
+        self.native.event_handler.Activated += self.native_event_activated
+        self.native.event_handler.AppWindow_Changed += self.native_event_changed
+        self.native.event_handler.AppWindow_Closing += self.native_event_closing
 
     def create_content(self):
         """Construct the container."""
-        self.container_native = Canvas()
+        self.container_native = events_handled(Canvas)
         self.container = Container(self.container_native, self.content_refreshed)
         self.native.Content = self.container_native
 
@@ -468,7 +468,7 @@ class MainWindow(Window):
         self.content_native.HorizontalAlignment = HorizontalAlignment.Stretch
         self.content_native.VerticalAlignment = VerticalAlignment.Stretch
 
-        self.container_native = Canvas()
+        self.container_native = events_handled(Canvas)
         Grid.SetRow(self.container_native, 2)
         Grid.SetColumn(self.container_native, 0)
         self.content_native.Children.Append(self.container_native)

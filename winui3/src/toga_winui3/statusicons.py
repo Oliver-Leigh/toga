@@ -32,6 +32,7 @@ from .libs.comctl32 import (
     SetWindowSubclass,
 )
 from .libs.misc import get_x_lparam, get_y_lparam, loword
+from .libs.nativeevents import events_handled
 from .libs.shell import Shell_NotifyIconW
 
 
@@ -150,10 +151,10 @@ class MenuStatusIcon(StatusIcon):
     def native_menu(self, native_menu_instance: MenuFlyout):
         assert isinstance(native_menu_instance, MenuFlyout)
 
-        native_menu_instance.add_Closing(self.native_event_Closing)
+        native_menu_instance.event_handler.Closing += self.native_event_closing
         self._native_menu = native_menu_instance
 
-    def native_event_Closing(self, sender, args):
+    def native_event_closing(self, sender, args):
         self.native_window.AppWindow.Hide()
 
     def native_event_click(self, x, y):
@@ -203,7 +204,7 @@ class StatusIconSet:
         # Menu status icons are the only icons that have extra construction needs.
         # Clear existing menus
         for menu_status_icon in self.interface._menu_status_icons:
-            menu_status_icon._impl.native_menu = MenuFlyout()
+            menu_status_icon._impl.native_menu = events_handled(MenuFlyout)
 
         # Determine the primary status icon.
         primary_group = self.interface._primary_menu_status_icon

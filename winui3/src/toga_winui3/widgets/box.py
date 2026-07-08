@@ -5,7 +5,7 @@ from .base import Widget
 
 class Box(Widget):
     def create(self):
-        self.native = Canvas()
+        self.native_cls = Canvas
 
     ####################################################################################
     # Overrides of methods called by the Toga style applicator.

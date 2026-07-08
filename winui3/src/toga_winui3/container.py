@@ -59,7 +59,7 @@ class Container:
         self.native = native_panel
         self.native.HorizontalAlignment = HorizontalAlignment.Stretch
         self.native.VerticalAlignment = VerticalAlignment.Stretch
-        self.native.SizeChanged += self.native_event_size_changed
+        self.native.event_handler.SizeChanged += self.native_event_size_changed
 
         self._content = None
         self._on_refresh = on_refresh

@@ -8,7 +8,7 @@ from .base import Widget
 
 class Label(Widget):
     def create(self):
-        self.native = TextBlock()
+        self.native_cls = TextBlock
         self._text = ""
 
         # Initial minimum sizes are 0 so that the staged properties are sized up.

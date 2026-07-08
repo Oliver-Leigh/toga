@@ -2,6 +2,8 @@ import sys
 
 from toga import Command as StandardCommand, Group, Key
 
+from .libs.nativeevents import events_handled
+
 
 class Command:
     def __init__(self, interface):
@@ -90,9 +92,9 @@ class Command:
             item.IsEnabled = is_enabled
 
     def create_menu_item(self, NativeClass):
-        item = NativeClass()
+        item = events_handled(NativeClass)
         item.Text = self.interface.text
-        item.add_Click(self.native_event_Click)
+        item.event_handler.Click += self.native_event_Click
 
         if self.interface.shortcut is not None:
             self.interface.factory.not_implemented("Command shortcuts")

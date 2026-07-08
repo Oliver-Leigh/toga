@@ -110,7 +110,7 @@ class StagedProperties:
         def size_changed(sender, args, duplicate=duplicate):
             self.native_event_size_changed(sender, args, duplicate)
 
-        duplicate.SizeChanged += size_changed
+        duplicate.event_handler.SizeChanged += size_changed
 
         for attribute, value_creator in self._staged_properties.items():
             value = value_creator()

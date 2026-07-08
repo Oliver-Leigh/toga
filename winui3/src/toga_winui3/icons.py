@@ -9,6 +9,7 @@ from win32more.Windows.Win32.UI.WindowsAndMessaging import HICON
 
 from .libs.gdiplus import create_icon
 from .libs.misc import load_icon
+from .libs.nativeevents import events_handled
 
 
 class Icon:
@@ -65,8 +66,10 @@ class Icon:
     def bitmap_image(self) -> BitmapImage:
         """The WinUI 3 BitmapImage used as a source for the icon."""
         if self._bitmap_image is None:
-            self._bitmap_image = BitmapImage()
-            self._bitmap_image.ImageFailed += self.native_event_image_failed
+            self._bitmap_image = events_handled(BitmapImage)
+            self._bitmap_image.event_handler.ImageFailed += (
+                self.native_event_image_failed
+            )
             self._bitmap_image.UriSource = self.uri
 
         return self._bitmap_image

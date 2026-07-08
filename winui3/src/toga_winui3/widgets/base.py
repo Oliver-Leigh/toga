@@ -7,11 +7,12 @@ from win32more.Microsoft.UI.Xaml.Controls import Canvas, Panel
 from toga.constants import TRANSPARENT
 
 from ..colors import native_brush
+from ..libs.nativeevents import EventsHandledMixin
 from .properties.native import NativeProperties, is_based_on
 from .properties.staged import StagedProperties
 
 
-class Widget(ABC):
+class Widget(EventsHandledMixin, ABC):
     ####################################################################################
     # Widget creation.
     ####################################################################################

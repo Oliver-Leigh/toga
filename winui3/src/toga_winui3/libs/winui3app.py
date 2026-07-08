@@ -52,6 +52,8 @@ from win32more.Windows.Win32.System.Com import (
 )
 from win32more.Windows.Win32.System.LibraryLoader import GetModuleFileName
 
+from .nativeevents import events_handled
+
 # TODO: Clean up code.
 # TODO: Needs to be commented and explained.
 # FIXME: Fix resources.
@@ -76,7 +78,7 @@ class WinUI3App(ComClass, Application, IApplicationOverrides, IXamlMetadataProvi
 
     # FIXME: Find a way to remove this method.
     def CreateWindow(self):
-        return Window()
+        return events_handled(Window)
 
     def GetXamlType(self, type):
         return self.AppProvider().GetXamlType(type)
