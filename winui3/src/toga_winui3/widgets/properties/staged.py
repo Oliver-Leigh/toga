@@ -95,7 +95,7 @@ class StagedProperties:
         self.refresh()
 
     def refresh(self):
-        if not self._widget._container:
+        if not self._widget.container:
             return
 
         # The properties in self._font_keys are only staged if other content such as
