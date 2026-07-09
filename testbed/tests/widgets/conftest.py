@@ -45,6 +45,7 @@ async def container_probe(widget):
 @pytest.fixture
 async def other(widget):
     """A separate widget that can take focus"""
+    skip_on_backends("toga_winui3", reason="TextInput is not implemented yet.")
     other = toga.TextInput()
     widget.parent.add(other)
     return other

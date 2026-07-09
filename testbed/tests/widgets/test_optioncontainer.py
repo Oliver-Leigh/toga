@@ -6,6 +6,7 @@ import toga
 from toga.colors import CORNFLOWERBLUE, GOLDENROD, REBECCAPURPLE, SEAGREEN
 from toga.style.pack import Pack
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test, safe_create
 from .probe import get_probe
 from .properties import (  # noqa: F401
@@ -61,6 +62,7 @@ async def on_select_handler():
 
 @pytest.fixture
 async def widget(content1, content2, content3, on_select_handler):
+    skip_on_backends("toga_winui3")
     with safe_create():
         return toga.OptionContainer(
             content=[
@@ -81,6 +83,7 @@ test_cleanup = build_cleanup_test(
     # Pass a function here to prevent init of toga.Box() in a different thread than
     # toga.OptionContainer. This would raise a runtime error on Windows.
     lambda: toga.OptionContainer(content=[("Tab 1", toga.Box())]),
+    skip_backends=("toga_winui3",),
 )
 
 

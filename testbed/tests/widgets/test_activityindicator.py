@@ -4,7 +4,7 @@ from travertino.constants import BLUE
 import toga
 from toga.style import Pack
 
-from .conftest import build_cleanup_test
+from .conftest import build_cleanup_test, skip_on_backends
 from .probe import get_probe
 from .properties import (  # noqa: F401
     test_enable_noop,
@@ -14,10 +14,13 @@ from .properties import (  # noqa: F401
 
 @pytest.fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.ActivityIndicator()
 
 
-test_cleanup = build_cleanup_test(toga.ActivityIndicator)
+test_cleanup = build_cleanup_test(
+    toga.ActivityIndicator, skip_backends=("toga_winui3",)
+)
 
 
 async def test_start_stop(widget, probe):

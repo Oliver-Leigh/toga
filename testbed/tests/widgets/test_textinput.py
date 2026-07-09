@@ -7,6 +7,7 @@ from toga.constants import CENTER
 from toga.style import Pack
 from toga.style.pack import RIGHT, SERIF
 
+from ..conftest import skip_on_backends
 from ..data import TEXTS
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
@@ -30,6 +31,7 @@ from .properties import (  # noqa: F401
 
 @pytest.fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.TextInput(value="Hello")
 
 

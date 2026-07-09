@@ -2,6 +2,7 @@ import pytest
 
 import toga
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
     test_enable_noop,
@@ -17,10 +18,11 @@ else:
 
 @pytest.fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.ProgressBar(max=100, value=5)
 
 
-test_cleanup = build_cleanup_test(toga.ProgressBar)
+test_cleanup = build_cleanup_test(toga.ProgressBar, skip_backends=("toga_winui3",))
 
 
 async def test_start_stop_determinate(widget, probe):

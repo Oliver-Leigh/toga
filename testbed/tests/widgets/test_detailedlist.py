@@ -6,6 +6,7 @@ import toga
 from toga.sources import ListListener, ListSource
 from toga.style.pack import Pack
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
     test_enable_noop,
@@ -61,6 +62,7 @@ async def widget(
     on_primary_action_handler,
     on_secondary_action_handler,
 ):
+    skip_on_backends("toga_winui3")
     return toga.DetailedList(
         data=source,
         accessors=("a", "b", "c"),
@@ -75,7 +77,7 @@ async def widget(
     )
 
 
-test_cleanup = build_cleanup_test(toga.DetailedList)
+test_cleanup = build_cleanup_test(toga.DetailedList, skip_backends=("toga_winui3",))
 
 
 async def test_scroll(widget, probe):

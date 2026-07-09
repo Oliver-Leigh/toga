@@ -7,6 +7,7 @@ import toga
 from toga.colors import CORNFLOWERBLUE, REBECCAPURPLE, TRANSPARENT
 from toga.style.pack import COLUMN, ROW, Pack
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
     test_background_color,
@@ -68,6 +69,7 @@ async def on_scroll():
 
 @pytest.fixture
 async def widget(content, on_scroll):
+    skip_on_backends("toga_winui3")
     return toga.ScrollContainer(
         content=content, style=Pack(flex=1), on_scroll=on_scroll
     )
@@ -77,6 +79,7 @@ test_cleanup = build_cleanup_test(
     # Pass a function here to prevent init of toga.Box() in a different thread than
     # toga.ScrollContainer. This would raise a runtime error on Windows.
     lambda: toga.ScrollContainer(content=toga.Box()),
+    skip_backends=("toga_winui3",),
 )
 
 

@@ -2,6 +2,10 @@ import pytest
 
 from toga.keys import Key
 
+from .conftest import skip_on_backends
+
+skip_on_backends("toga_winui3", allow_module_level=True)
+
 
 @pytest.mark.parametrize(
     "key_combo, key_data",

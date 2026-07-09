@@ -10,6 +10,7 @@ import pytest
 import toga
 from toga.style import Pack
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test, safe_create
 from .properties import (  # noqa: F401
     test_flex_widget_size,
@@ -80,6 +81,7 @@ async def on_load():
 
 @pytest.fixture
 async def widget(on_load):
+    skip_on_backends("toga_winui3")
     with safe_create():
         widget = toga.WebView(style=Pack(flex=1), on_webview_load=on_load)
 
@@ -118,7 +120,11 @@ async def widget(on_load):
         toga.App.app._gc_protector.append(widget)
 
 
-test_cleanup = build_cleanup_test(toga.WebView, xfail_backends=("toga_gtk",))
+test_cleanup = build_cleanup_test(
+    toga.WebView,
+    xfail_backends=("toga_gtk",),
+    skip_backends=("toga_winui3",),
+)
 
 
 @pytest.mark.flaky(retries=5, delay=1)

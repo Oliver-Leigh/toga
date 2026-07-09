@@ -4,6 +4,7 @@ from pytest import fixture
 
 import toga
 
+from ..conftest import skip_on_backends
 from ..data import TEXTS
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
@@ -28,12 +29,14 @@ else:
 
 @fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.Switch("Hello")
 
 
 test_cleanup = build_cleanup_test(
     toga.Switch,
     args=("Hello",),
+    skip_backends=("toga_winui3",),
 )
 
 

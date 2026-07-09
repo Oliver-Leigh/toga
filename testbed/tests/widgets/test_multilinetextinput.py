@@ -5,6 +5,7 @@ import pytest
 import toga
 from toga.style import Pack
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
     test_background_color,
@@ -39,6 +40,7 @@ from .test_textinput import (  # noqa: F401
 
 @pytest.fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.MultilineTextInput(value="Hello", style=Pack(flex=1))
 
 
@@ -48,7 +50,10 @@ def verify_font_sizes():
     return False, False
 
 
-test_cleanup = build_cleanup_test(toga.MultilineTextInput)
+test_cleanup = build_cleanup_test(
+    toga.MultilineTextInput,
+    skip_backends=("toga_winui3",),
+)
 
 
 async def test_scroll_position(widget, probe):

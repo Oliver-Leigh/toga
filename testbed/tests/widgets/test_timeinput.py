@@ -75,19 +75,19 @@ def normalize(probe):
 
 @fixture
 async def widget():
-    skip_on_backends("toga_gtk")
+    skip_on_backends("toga_gtk", "toga_winui3")
     return toga.TimeInput()
 
 
 test_cleanup = build_cleanup_test(
     toga.TimeInput,
-    skip_backends=("toga_gtk",),
+    skip_backends=("toga_gtk", "toga_winui3"),
 )
 
 
 async def test_init(normalize):
     "Properties can be set in the constructor"
-    skip_on_backends("toga_gtk")
+    skip_on_backends("toga_gtk", "toga_winui3")
 
     value = time(10, 10, 30)
     min = time(2, 3, 4)

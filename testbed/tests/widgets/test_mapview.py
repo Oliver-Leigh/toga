@@ -8,6 +8,7 @@ import pytest
 import toga
 from toga.style import Pack
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test, safe_create
 from .properties import (  # noqa: F401
     test_flex_widget_size,
@@ -32,6 +33,7 @@ async def on_select():
 
 @pytest.fixture
 async def widget(on_select):
+    skip_on_backends("toga_winui3")
     with safe_create():
         widget = toga.MapView(style=Pack(flex=1), on_select=on_select)
 
@@ -59,7 +61,10 @@ async def widget(on_select):
         toga.App.app._gc_protector.append(widget)
 
 
-test_cleanup = build_cleanup_test(toga.MapView)
+test_cleanup = build_cleanup_test(
+    toga.MapView,
+    skip_backends=("toga_winui3",),
+)
 
 
 # The next two tests fail about 75% of the time in the macOS x86_64 CI configuration.

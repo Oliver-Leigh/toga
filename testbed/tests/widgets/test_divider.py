@@ -4,6 +4,7 @@ import toga
 from toga.constants import Direction
 from toga.style.pack import COLUMN, ROW
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
     test_enable_noop,
@@ -13,10 +14,11 @@ from .properties import (  # noqa: F401
 
 @pytest.fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.Divider()
 
 
-test_cleanup = build_cleanup_test(toga.Divider)
+test_cleanup = build_cleanup_test(toga.Divider, skip_backends=("toga_winui3",))
 
 
 async def test_directions(widget, probe):

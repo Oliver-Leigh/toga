@@ -7,7 +7,7 @@ import toga
 from toga.sources import AccessorColumn, ListListener, TreeListener, TreeSource
 from toga.style.pack import Pack
 
-from ..conftest import skip_on_platforms
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .probe import get_probe
 from .properties import (  # noqa: F401
@@ -107,7 +107,7 @@ def source():
 
 @pytest.fixture
 async def widget(source, on_select_handler, on_activate_handler):
-    skip_on_platforms("iOS", "android")
+    skip_on_backends("toga_android", "toga_iOS", "toga_winui3")
     return toga.Tree(
         ["A", "B", "C"],
         data=source,
@@ -120,7 +120,7 @@ async def widget(source, on_select_handler, on_activate_handler):
 
 @pytest.fixture
 async def headerless_widget(source, on_select_handler):
-    skip_on_platforms("iOS", "android")
+    skip_on_backends("toga_android", "toga_iOS", "toga_winui3")
     return toga.Tree(
         columns=[
             AccessorColumn(None, "a"),
@@ -152,7 +152,7 @@ async def headerless_probe(main_window, headerless_widget):
 @pytest.fixture
 async def multiselect_widget(source, on_select_handler):
     # Although Android *has* a table implementation, it needs to be rebuilt.
-    skip_on_platforms("iOS", "android")
+    skip_on_backends("toga_android", "toga_iOS", "toga_winui3")
     return toga.Tree(
         ["A", "B", "C"],
         data=source,
@@ -179,7 +179,7 @@ async def multiselect_probe(main_window, multiselect_widget):
 test_cleanup = build_cleanup_test(
     toga.Tree,
     kwargs={"columns": ["A", "B", "C"]},
-    skip_platforms=("iOS", "android"),
+    skip_backends=("toga_android", "toga_iOS", "toga_winui3"),
 )
 
 

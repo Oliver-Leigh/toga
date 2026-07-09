@@ -34,7 +34,7 @@ from ..properties import (  # noqa: F401
     test_focus_noop,
 )
 
-test_cleanup = build_cleanup_test(toga.Canvas)
+test_cleanup = build_cleanup_test(toga.Canvas, skip_backends=("toga_winui3",))
 
 
 async def test_resize(widget, probe, on_resize_handler):

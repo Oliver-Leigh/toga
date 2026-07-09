@@ -3,6 +3,7 @@ import pytest
 import toga
 from toga.style.pack import COLUMN, ROW
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
     test_background_color,
@@ -15,11 +16,14 @@ from .properties import (  # noqa: F401
 
 @pytest.fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.ImageView(image="resources/sample.png")
 
 
 test_cleanup = build_cleanup_test(
-    toga.ImageView, kwargs={"image": "resources/sample.png"}
+    toga.ImageView,
+    kwargs={"image": "resources/sample.png"},
+    skip_backends=("toga_winui3",),
 )
 
 

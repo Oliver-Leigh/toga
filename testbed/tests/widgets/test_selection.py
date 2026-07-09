@@ -6,6 +6,7 @@ import toga
 from toga.constants import CENTER
 from toga.sources import ListListener, ListSource
 
+from ..conftest import skip_on_backends
 from .conftest import build_cleanup_test
 from .properties import (  # noqa: F401
     test_background_color,
@@ -38,6 +39,7 @@ else:
 
 @pytest.fixture
 async def widget():
+    skip_on_backends("toga_winui3")
     return toga.Selection(items=["first", "second", "third"])
 
 
@@ -55,6 +57,7 @@ def verify_vertical_text_align():
 test_cleanup = build_cleanup_test(
     toga.Selection,
     kwargs={"items": ["first", "second", "third"]},
+    skip_backends=("toga_winui3",),
 )
 
 
