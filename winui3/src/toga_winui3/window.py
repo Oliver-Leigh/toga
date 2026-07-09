@@ -63,6 +63,12 @@ class Window:
         # from fullscreen mode. Use this variable to distinguish between them.
         self._in_presentation_mode = False
 
+        # Keep a record of the current state to access after state changes.
+        self._cached_state = WindowState.NORMAL
+
+        # Keep a record of the window size in the NORMAL state.
+        self._cached_size = size
+
         # In WinUI 3 a minimized window is not considered visible. This variable keeps
         # track of this property.
         self._visible = self.native.Visible
@@ -146,7 +152,26 @@ class Window:
             pass
 
         if args.DidSizeChange:
-            self.interface.on_resize()
+            old_state = self._cached_state
+            new_state = self.get_window_state()
+
+            # DidSizeChange is triggered by entering and leaving a Minimized state.
+            self._cached_state = new_state
+
+            # Update the cached size.
+            self._cached_size = self._normal_size
+
+            if {old_state, new_state} != {WindowState.MINIMIZED, WindowState.NORMAL}:
+                self.interface.on_resize()
+
+            if old_state != new_state:
+                if old_state == WindowState.MINIMIZED:
+                    print("Showing after minimize")
+                    self.interface.on_show()
+
+                elif new_state == WindowState.MINIMIZED:
+                    print("Hiding via minimize")
+                    self.interface.on_hide()
 
         if args.DidVisibilityChange:
             # Minimize is not considered visible but it also doesn't trigger this event.
@@ -159,6 +184,11 @@ class Window:
 
         if args.DidPresenterChange:
             self._set_restrictions()
+
+            # Notes:
+            # - DidSizeChange occurs before DidPresenterChange.
+            # - DidPresenterChange is not triggered by Minimized -> Normal.
+            self._cached_state = self.get_window_state()
 
     def native_event_closing(self, sender, args):
         # Note: This event is raised when clicking on the close button, but not when
@@ -242,6 +272,11 @@ class Window:
 
     def get_size(self) -> Size:
         """Gets the size of the window in CSS pixels (effective pixels)."""
+        # If the window is minimized from a maxmimized state, then toga expects the size
+        # of window in its normal state.
+        if self._cached_state == WindowState.MINIMIZED:
+            return self._cached_size
+
         # self.native.Bounds returns values in effective pixels, but they are not always
         # integer values.
         return Size(
@@ -253,8 +288,17 @@ class Window:
         """Sets the size of the window in CSS pixels (effective pixels)."""
         css_to_physical = self.get_current_screen().css_to_physical
 
+        current_bounds = self.native.Bounds
+        current_size = self.native.AppWindow.Size
+
+        diff_width = current_size.Width - css_to_physical(current_bounds.Width)
+        diff_height = current_size.Height - css_to_physical(current_bounds.Height)
+
         self.native.AppWindow.Resize(
-            SizeInt32(css_to_physical(size[0]), css_to_physical(size[1]))
+            SizeInt32(
+                css_to_physical(size[0]) + diff_width,
+                css_to_physical(size[1]) + diff_height,
+            )
         )
 
     @property
@@ -285,6 +329,13 @@ class Window:
             window_size.Width - client_size.Width + client_min_width,
             window_size.Height - client_size.Height + client_min_height,
         )
+
+    @property
+    def _normal_size(self):
+        if self._cached_state == WindowState.NORMAL:
+            return self.get_size()
+
+        return self._cached_size
 
     ####################################################################################
     # Window position (CSS pixels, see window size for terminology).
@@ -392,9 +443,7 @@ class Window:
         ):
             self.interface.app.exit_presentation_mode()
 
-        print("set_window_state")
         from_state = self.get_window_state()
-        print(f"from_state:{from_state}")
         if from_state == state:
             return
 
@@ -420,31 +469,35 @@ class Window:
             if hasattr(self, "toolbar_native"):
                 self.toolbar_native.Visible = False
 
-            return
+        else:
+            self._in_presentation_mode = False
+            if hasattr(self, "menu_native"):
+                self.menu_native.Visible = True
 
-        self._in_presentation_mode = False
-        if hasattr(self, "menu_native"):
-            self.menu_native.Visible = True
+            if hasattr(self, "toolbar_native"):
+                self.toolbar_native.Visible = True
 
-        if hasattr(self, "toolbar_native"):
-            self.toolbar_native.Visible = True
+            match state:
+                case WindowState.NORMAL:
+                    presenter, _ = self._presenter
+                    presenter.Restore()
 
-        match state:
-            case WindowState.NORMAL:
-                presenter, _ = self._presenter
-                presenter.Restore()
+                case WindowState.MINIMIZED:
+                    presenter, _ = self._presenter
+                    presenter.Minimize()
 
-            case WindowState.MINIMIZED:
-                presenter, _ = self._presenter
-                presenter.Minimize()
+                case WindowState.MAXIMIZED:
+                    presenter, _ = self._presenter
+                    presenter.Maximize()
 
-            case WindowState.MAXIMIZED:
-                presenter, _ = self._presenter
-                presenter.Maximize()
+                case _:
+                    # WindowState.FULLSCREEN
+                    pass
 
-            case _:
-                # WindowState.FULLSCREEN
-                pass
+        if not from_overlapped and not to_overlapped:
+            # Toga expects an on_resize event to from FULLSCREEN <-> PRESENTATION, but
+            # this is not a native event so trigger it manually.
+            self.interface.on_resize()
 
     ####################################################################################
     # Window capabilities
