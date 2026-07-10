@@ -122,7 +122,7 @@ async def test_unknown_status_icon(app, app_probe):
 
 async def test_activate_button_icon(app, app_probe):
     """A button status icon can be activated."""
-    app_probe.activate_status_icon_button("button")
+    await app_probe.activate_status_icon_button("button")
     await app_probe.redraw("Pressed status icon button")
 
     app.cmd_action.assert_called_once_with(app.status_icons["button"])
@@ -130,7 +130,7 @@ async def test_activate_button_icon(app, app_probe):
 
 async def test_activate_status_menu_item(app, app_probe):
     """A menu status item can be activated."""
-    app_probe.activate_status_menu_item("second", "Action 5")
+    await app_probe.activate_status_menu_item("second", "Action 5")
     await app_probe.redraw("Pressed menu status item")
 
     app.cmd_action.assert_called_once_with(app.status_cmd5)

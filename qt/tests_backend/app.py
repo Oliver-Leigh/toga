@@ -168,12 +168,12 @@ class AppProbe(BaseProbe):
                 for action in menu.actions()
             ]
 
-    def activate_status_icon_button(self, item_id):
+    async def activate_status_icon_button(self, item_id):
         self.app.status_icons[item_id]._impl.native.activated.emit(
             QSystemTrayIcon.ActivationReason.Trigger
         )
 
-    def activate_status_menu_item(self, item_id, title):
+    async def activate_status_menu_item(self, item_id, title):
         menu = self.app.status_icons[item_id]._impl.native.contextMenu()
         item = {action.text(): action for action in menu.actions()}[title]
         item.triggered.emit()

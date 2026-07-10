@@ -281,12 +281,12 @@ class AppProbe(BaseProbe, DialogsMixin):
             # It's a button status item
             return None
 
-    def activate_status_icon_button(self, item_id):
+    async def activate_status_icon_button(self, item_id):
         if GTK_VERSION >= (4, 0, 0):
             pytest.skip("GTK4 doesn't support status icons")
         self.app.status_icons[item_id]._impl.native.emit("activate", 0, 0)
 
-    def activate_status_menu_item(self, item_id, title):
+    async def activate_status_menu_item(self, item_id, title):
         if GTK_VERSION >= (4, 0, 0):
             pytest.skip("GTK4 doesn't support status menu items")
         menu = self.app.status_icons[item_id]._impl.native.get_primary_menu()

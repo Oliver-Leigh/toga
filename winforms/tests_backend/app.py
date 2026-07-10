@@ -245,7 +245,7 @@ class AppProbe(BaseProbe, DialogsMixin):
             # It's a button status item
             return None
 
-    def activate_status_icon_button(self, item_id):
+    async def activate_status_icon_button(self, item_id):
         # Winforms doesn't provide an OnClick to trigger clicks, so we have to fake it
         # at the level of the impl.
         self.app.status_icons[item_id]._impl.winforms_click(
@@ -253,7 +253,7 @@ class AppProbe(BaseProbe, DialogsMixin):
             EventArgs.Empty,
         )
 
-    def activate_status_menu_item(self, item_id, title):
+    async def activate_status_menu_item(self, item_id, title):
         menu = getattr(self.app.status_icons[item_id]._impl.native, CONTEXT_MENU_ATTR)
         item = {item.Text: item for item in getattr(menu, MENU_ATTR)}[title]
         item.OnClick(EventArgs.Empty)

@@ -331,10 +331,10 @@ class AppProbe(BaseProbe, DialogsMixin):
             # It's a button status item
             return None
 
-    def activate_status_icon_button(self, item_id):
+    async def activate_status_icon_button(self, item_id):
         self.app.status_icons[item_id]._impl.native.button.performClick(None)
 
-    def activate_status_menu_item(self, item_id, title):
+    async def activate_status_menu_item(self, item_id, title):
         item = self.app.status_icons[item_id]._impl.native.menu.itemWithTitle(title)
         send_message(
             self.app._impl.native.delegate,
