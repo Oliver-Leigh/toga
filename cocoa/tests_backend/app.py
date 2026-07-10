@@ -159,10 +159,10 @@ class AppProbe(BaseProbe, DialogsMixin):
         if isinstance(about_dialog, NSPanel):
             about_dialog.close()
 
-    def activate_menu_visit_homepage(self):
+    async def activate_menu_visit_homepage(self):
         self._activate_menu_item(["Help", "Visit homepage"])
 
-    def assert_system_menus(self):
+    async def assert_system_menus(self):
         self.assert_menu_item(["*", "About Toga Testbed"], enabled=True)
         self.assert_menu_item(["*", "Hide Toga Testbed"], enabled=True)
         self.assert_menu_item(["*", "Hide Others"], enabled=True)
@@ -221,11 +221,11 @@ class AppProbe(BaseProbe, DialogsMixin):
             "The dialog is not in focus"
         )
 
-    def assert_menu_item(self, path, enabled):
+    async def assert_menu_item(self, path, enabled):
         item = self._menu_item(path)
         assert item.isEnabled() == enabled
 
-    def assert_menu_order(self, path, expected):
+    async def assert_menu_order(self, path, expected):
         menu = self._menu_item(path).submenu
 
         assert menu.numberOfItems == len(expected)

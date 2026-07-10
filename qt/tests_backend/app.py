@@ -88,18 +88,18 @@ class AppProbe(BaseProbe):
     async def close_about_dialog(self):
         self.impl._about_dialog.done(QDialog.DialogCode.Accepted)
 
-    def activate_menu_visit_homepage(self):
+    async def activate_menu_visit_homepage(self):
         raise pytest.xfail("Qt apps do not have a Visit Homepage menu action")
 
     def assert_dialog_in_focus(self, dialog):
         active_window = QApplication.activeWindow()
         assert active_window.windowTitle() == dialog._impl.native.windowTitle()
 
-    def assert_menu_item(self, path, *, enabled=True):
+    async def assert_menu_item(self, path, *, enabled=True):
         item = self._menu_item(path)
         assert item.isEnabled() == enabled
 
-    def assert_menu_order(self, path, expected):
+    async def assert_menu_order(self, path, expected):
         menu = self._menu_item(path)
         actual_titles = [
             action.text() if action.isSeparator() is False else "---"
@@ -107,7 +107,7 @@ class AppProbe(BaseProbe):
         ]
         assert actual_titles == expected
 
-    def assert_system_menus(self):
+    async def assert_system_menus(self):
         self.assert_menu_item(
             ["Settings", "Configure Toga Testbed (Qt)"],
             enabled=False,

@@ -150,7 +150,7 @@ class AppProbe(BaseProbe, DialogsMixin):
     async def close_about_dialog(self):
         await self.type_character("\n")
 
-    def activate_menu_visit_homepage(self):
+    async def activate_menu_visit_homepage(self):
         self._activate_menu_item(["Help", "Visit homepage"])
 
     def assert_dialog_in_focus(self, dialog):
@@ -164,7 +164,7 @@ class AppProbe(BaseProbe, DialogsMixin):
             "The dialog is not in focus"
         )
 
-    def assert_menu_item(self, path, *, enabled=True):
+    async def assert_menu_item(self, path, *, enabled=True):
         item = self._menu_item(path)
         assert item.Enabled == enabled
 
@@ -181,7 +181,7 @@ class AppProbe(BaseProbe, DialogsMixin):
         else:
             assert item.ShortcutKeyDisplayString == shortcut
 
-    def assert_menu_order(self, path, expected):
+    async def assert_menu_order(self, path, expected):
         menu = self._menu_item(path)
 
         assert len(menu.DropDownItems) == len(expected)
@@ -191,7 +191,7 @@ class AppProbe(BaseProbe, DialogsMixin):
             else:
                 assert item.Text == title
 
-    def assert_system_menus(self):
+    async def assert_system_menus(self):
         self.assert_menu_item(["File", "New Example Document"], enabled=True)
         self.assert_menu_item(["File", "New Read-only Document"], enabled=True)
         self.assert_menu_item(["File", "Open..."], enabled=True)

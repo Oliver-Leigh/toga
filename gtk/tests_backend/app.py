@@ -150,11 +150,11 @@ class AppProbe(BaseProbe, DialogsMixin):
             pytest.skip("GTK4 doesn't support system menus")
         self.app._impl._close_about(self.app._impl.native_about_dialog)
 
-    def activate_menu_visit_homepage(self):
+    async def activate_menu_visit_homepage(self):
         # Homepage is a link on the GTK about page.
         pytest.xfail("GTK doesn't have a visit homepage menu item")
 
-    def assert_system_menus(self):
+    async def assert_system_menus(self):
         if GTK_VERSION >= (4, 0, 0):
             pytest.skip("GTK4 doesn't support system menus")
         self.assert_menu_item(["*", "Preferences"], enabled=False)
@@ -179,13 +179,13 @@ class AppProbe(BaseProbe, DialogsMixin):
     def activate_menu_minimize(self):
         pytest.xfail("GTK doesn't have a window management menu items")
 
-    def assert_menu_item(self, path, enabled):
+    async def assert_menu_item(self, path, enabled):
         if GTK_VERSION >= (4, 0, 0):
             pytest.skip("GTK4 doesn't support menu items")
         _, action = self._menu_item(path)
         assert action.get_enabled() == enabled
 
-    def assert_menu_order(self, path, expected):
+    async def assert_menu_order(self, path, expected):
         if GTK_VERSION >= (4, 0, 0):
             pytest.skip("GTK4 doesn't support menu items")
         item, action = self._menu_item(path)
