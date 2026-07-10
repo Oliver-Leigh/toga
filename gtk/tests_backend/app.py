@@ -157,18 +157,18 @@ class AppProbe(BaseProbe, DialogsMixin):
     async def assert_system_menus(self):
         if GTK_VERSION >= (4, 0, 0):
             pytest.skip("GTK4 doesn't support system menus")
-        self.assert_menu_item(["*", "Preferences"], enabled=False)
-        self.assert_menu_item(["*", "Quit"], enabled=True)
+        await self.assert_menu_item(["*", "Preferences"], enabled=False)
+        await self.assert_menu_item(["*", "Quit"], enabled=True)
 
-        self.assert_menu_item(["File", "New Example Document"], enabled=True)
-        self.assert_menu_item(["File", "New Read-only Document"], enabled=True)
-        self.assert_menu_item(["File", "Open..."], enabled=True)
-        self.assert_menu_item(["File", "Save"], enabled=True)
-        self.assert_menu_item(["File", "Save As..."], enabled=True)
-        self.assert_menu_item(["File", "Save All"], enabled=True)
+        await self.assert_menu_item(["File", "New Example Document"], enabled=True)
+        await self.assert_menu_item(["File", "New Read-only Document"], enabled=True)
+        await self.assert_menu_item(["File", "Open..."], enabled=True)
+        await self.assert_menu_item(["File", "Save"], enabled=True)
+        await self.assert_menu_item(["File", "Save As..."], enabled=True)
+        await self.assert_menu_item(["File", "Save All"], enabled=True)
 
-        self.assert_menu_item(["Help", "Visit homepage"], enabled=True)
-        self.assert_menu_item(["Help", "About Toga Testbed"], enabled=True)
+        await self.assert_menu_item(["Help", "Visit homepage"], enabled=True)
+        await self.assert_menu_item(["Help", "About Toga Testbed"], enabled=True)
 
     def activate_menu_close_window(self):
         pytest.xfail("GTK doesn't have a window management menu items")

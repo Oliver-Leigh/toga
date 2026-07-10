@@ -105,7 +105,7 @@ class AppProbe(BaseProbe, DialogsMixin):
                 assert menu.getItem(i - separator_offset).getTitle() == title
 
     async def assert_system_menus(self):
-        self.assert_menu_item(["About Toga Testbed"])
+        await self.assert_menu_item(["About Toga Testbed"])
 
     def activate_menu_close_window(self):
         pytest.xfail("This backend doesn't have a window management menu")

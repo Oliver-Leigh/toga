@@ -192,17 +192,17 @@ class AppProbe(BaseProbe, DialogsMixin):
                 assert item.Text == title
 
     async def assert_system_menus(self):
-        self.assert_menu_item(["File", "New Example Document"], enabled=True)
-        self.assert_menu_item(["File", "New Read-only Document"], enabled=True)
-        self.assert_menu_item(["File", "Open..."], enabled=True)
-        self.assert_menu_item(["File", "Save"], enabled=True)
-        self.assert_menu_item(["File", "Save As..."], enabled=True)
-        self.assert_menu_item(["File", "Save All"], enabled=True)
-        self.assert_menu_item(["File", "Preferences"], enabled=False)
-        self.assert_menu_item(["File", "Exit"])
+        await self.assert_menu_item(["File", "New Example Document"], enabled=True)
+        await self.assert_menu_item(["File", "New Read-only Document"], enabled=True)
+        await self.assert_menu_item(["File", "Open..."], enabled=True)
+        await self.assert_menu_item(["File", "Save"], enabled=True)
+        await self.assert_menu_item(["File", "Save As..."], enabled=True)
+        await self.assert_menu_item(["File", "Save All"], enabled=True)
+        await self.assert_menu_item(["File", "Preferences"], enabled=False)
+        await self.assert_menu_item(["File", "Exit"])
 
-        self.assert_menu_item(["Help", "Visit homepage"])
-        self.assert_menu_item(["Help", "About Toga Testbed"])
+        await self.assert_menu_item(["Help", "Visit homepage"])
+        await self.assert_menu_item(["Help", "About Toga Testbed"])
 
     def activate_menu_close_window(self):
         pytest.xfail("This platform doesn't have a window management menu")

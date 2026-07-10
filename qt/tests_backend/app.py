@@ -108,26 +108,26 @@ class AppProbe(BaseProbe):
         assert actual_titles == expected
 
     async def assert_system_menus(self):
-        self.assert_menu_item(
+        await self.assert_menu_item(
             ["Settings", "Configure Toga Testbed (Qt)"],
             enabled=False,
         )
-        self.assert_menu_item(["File", "Quit"], enabled=True)
+        await self.assert_menu_item(["File", "Quit"], enabled=True)
 
-        self.assert_menu_item(["File", "New Example Document"], enabled=True)
-        self.assert_menu_item(["File", "New Read-only Document"], enabled=True)
-        self.assert_menu_item(["File", "Open..."], enabled=True)
-        self.assert_menu_item(["File", "Save"], enabled=True)
-        self.assert_menu_item(["File", "Save As..."], enabled=True)
-        self.assert_menu_item(["File", "Save All"], enabled=True)
+        await self.assert_menu_item(["File", "New Example Document"], enabled=True)
+        await self.assert_menu_item(["File", "New Read-only Document"], enabled=True)
+        await self.assert_menu_item(["File", "Open..."], enabled=True)
+        await self.assert_menu_item(["File", "Save"], enabled=True)
+        await self.assert_menu_item(["File", "Save As..."], enabled=True)
+        await self.assert_menu_item(["File", "Save All"], enabled=True)
 
-        self.assert_menu_item(["Help", "About Toga Testbed (Qt)"], enabled=True)
+        await self.assert_menu_item(["Help", "About Toga Testbed (Qt)"], enabled=True)
 
-        self.assert_menu_item(["Edit", "Undo"])
-        self.assert_menu_item(["Edit", "Redo"])
-        self.assert_menu_item(["Edit", "Cut"])
-        self.assert_menu_item(["Edit", "Copy"])
-        self.assert_menu_item(["Edit", "Paste"])
+        await self.assert_menu_item(["Edit", "Undo"])
+        await self.assert_menu_item(["Edit", "Redo"])
+        await self.assert_menu_item(["Edit", "Cut"])
+        await self.assert_menu_item(["Edit", "Copy"])
+        await self.assert_menu_item(["Edit", "Paste"])
 
     def activate_menu_close_window(self):
         pytest.xfail("KDE apps do not include Close in the menu bar")
