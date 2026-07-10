@@ -1,12 +1,13 @@
-import asyncio
-from ctypes import byref, sizeof, windll
-from ctypes import byref, sizeof, wintypes as wt
+from ctypes import byref, sizeof, windll, wintypes as wt
 from pathlib import Path
 from time import sleep
 
 import PIL.Image
 import pytest
-
+import toga_winui3.libs.win32structures as ws
+from toga_winui3.libs.gdiplus import icon_pixels
+from toga_winui3.libs.shell import Shell_NotifyIconGetRect
+from toga_winui3.libs.winui3app import WinUI3App
 from win32more.Microsoft.UI.Input import InputCursor
 from win32more.Microsoft.UI.Interop import GetWindowFromWindowId
 from win32more.Microsoft.UI.Xaml import FocusState, Window
@@ -17,59 +18,23 @@ from win32more.Microsoft.UI.Xaml.Controls import (
     MenuFlyoutSeparator,
     MenuFlyoutSubItem,
 )
-from win32more.Windows.Win32.Foundation import POINT, RECT
 from win32more.Windows.Win32.UI.Input.KeyboardAndMouse import (
-    GetFocus,
+    VK_B,
     VK_RETURN,
     VK_RWIN,
-    VK_B,
 )
 from win32more.Windows.Win32.UI.WindowsAndMessaging import (
     CURSORINFO,
+    TITLEBARINFOEX,
+    WM_GETICON,
+    WM_GETTITLEBARINFOEX,
     GetCursorInfo,
     SendMessageW,
-    PostMessageW,
-    SetForegroundWindow,
-    WM_GETICON,
-    WM_KEYDOWN,
-    WM_KEYUP,
-    WM_SETCURSOR,
-    HTCLIENT,
-    WM_MOUSEMOVE,
-    WM_NCDESTROY,
-    GetWindowThreadProcessId,
 )
-
-from win32more.Windows.Win32.UI.WindowsAndMessaging import (
-    IDC_ARROW,
-    LoadCursorW,
-    SetCursor,
-)
-
 
 import toga
 
-import toga_winui3.libs.win32structures as ws
-from toga_winui3.libs.winui3app import WinUI3App
-from toga_winui3.libs.gdiplus import icon_pixels
-from toga_winui3.libs.shell import Shell_NotifyIconGetRect
-
 from .probe import BaseProbe
-
-from toga_winui3.libs import win32constants as wc, win32structures as ws
-from toga_winui3.libs.comctl32 import (
-    DefSubclassProc, 
-    RemoveWindowSubclass, 
-    SetWindowSubclass, 
-)
-from toga_winui3.libs.shell import Shell_NotifyIconW
-from toga_winui3.libs.misc import loword, get_x_lparam, get_y_lparam
-
-from win32more.Windows.Win32.UI.WindowsAndMessaging import (
-    SetForegroundWindow,
-    TITLEBARINFOEX, 
-    WM_GETTITLEBARINFOEX
-)
 
 
 class AppProbe(BaseProbe):
@@ -87,7 +52,7 @@ class AppProbe(BaseProbe):
         self.main_window = app.main_window
 
         # The WinUI3App class is a child class of with Microsoft.UI.Xaml.Application
-        # class, which is a singleton instance. 
+        # class, which is a singleton instance.
         assert self.app._impl.native == WinUI3App
         assert isinstance(self.app._impl.native_instance, WinUI3App)
 
@@ -121,21 +86,15 @@ class AppProbe(BaseProbe):
     ####################################################################################
 
     def _menu_children(self, menu):
-        children = [
-            self._menu_item_casted(child)
-            for child in menu.Items
-        ]
-        child_labels = [ 
-            self._menu_item_label(child)
-            for child in children
-        ]
+        children = [self._menu_item_casted(child) for child in menu.Items]
+        child_labels = [self._menu_item_label(child) for child in children]
         return children, child_labels
 
     async def _menu_item(self, path, open_menus=False):
         """Select a menu item with the given path."""
-        # Note that retrieving a submenu's items via menu.Items gives a list of 
+        # Note that retrieving a submenu's items via menu.Items gives a list of
         # MenuFlyoutItemBase objects. These need to be casted manually to the
-        # appropriate types. 
+        # appropriate types.
 
         item = self.main_window._impl.menu_native
         for i, label in enumerate(path):
@@ -147,7 +106,7 @@ class AppProbe(BaseProbe):
                 raise AssertionError(
                     f"no item named {path[: i + 1]}; options are {child_labels}"
                 ) from None
-            
+
             item = children[child_index]
 
             if open_menus:
@@ -156,18 +115,18 @@ class AppProbe(BaseProbe):
 
         # A selectable final menu item is always of type MenuFlyoutItem
         return item
-    
+
     def _menu_item_label(self, menu_item):
         if isinstance(menu_item, MenuBarItem):
             return menu_item.Title
-        
+
         elif type(menu_item) in (MenuFlyoutItem, MenuFlyoutSubItem):
             return menu_item.Text
-        
+
         return "---"
-    
+
     def _menu_item_casted(self, menu_item):
-        # Note that retrieving a submenu's items via menu.Items gives a list of 
+        # Note that retrieving a submenu's items via menu.Items gives a list of
         # MenuFlyoutItemBase objects. The actual type of this object could be one of:
         #    - MenuFlyoutSubItem: Has both the Items and the Text attributes.
         #    - MenuFlyoutItem:  Has the Items attribute but not the Text attribute.
@@ -179,19 +138,19 @@ class AppProbe(BaseProbe):
 
         try:
             casted = MenuFlyoutSubItem(value=menu_item.value)
-            test = casted.Items
+            casted.Items  # noqa B018
             return casted
-        except OSError as e:
+        except OSError:
             pass
 
         # Attempt to cast as MenuFlyoutItem
         try:
             casted = MenuFlyoutItem(value=menu_item.value)
-            test = casted.Text
+            casted.Text  # noqa B018
             return casted
-        except OSError as e:
+        except OSError:
             pass
- 
+
         # Fallback to MenuFlyoutSeparator
         return MenuFlyoutSeparator(value=menu_item.value)
 
@@ -239,8 +198,8 @@ class AppProbe(BaseProbe):
         # This method used code from the toga_winforms probe which is based off:
         # https://stackoverflow.com/a/12467292.
         #
-        # The documentation recommends using GetCursorInfo to test the visibilty of
-        # cursors shown/hidden with ShowCursor. 
+        # The documentation recommends using GetCursorInfo to test the visibility of
+        # cursors shown/hidden with ShowCursor.
         # https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-showcursor
         # https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-getcursorinfo
 
@@ -255,13 +214,13 @@ class AppProbe(BaseProbe):
         close_rect = title_bar_info.rgrect[5]
 
         self._set_cursor_position(
-            int((close_rect.left + close_rect.right)/2), 
-            int((close_rect.top + close_rect.bottom)/2),
+            int((close_rect.left + close_rect.right) / 2),
+            int((close_rect.top + close_rect.bottom) / 2),
         )
-        
-        # A sleep to allow the window messages to propagate. 
+
+        # A sleep to allow the window messages to propagate.
         sleep(0.1)
-        
+
         cursor_info = CURSORINFO()
         cursor_info.cbSize = sizeof(CURSORINFO)
         if not GetCursorInfo(byref(cursor_info)):
@@ -285,19 +244,19 @@ class AppProbe(BaseProbe):
         # The cursor visibility if has two parts:
         #   1. ShowCursor for the non-client area
         #   2. ProtectedCursor for the client area.
-        
-        # Get the cursor visibility of the non-client area. 
+
+        # Get the cursor visibility of the non-client area.
         is_cursor_visible_non_client = self._is_cursor_visible_non_client
-        
+
         # Confirm that the cursor visibilities of the client and non-client areas match.
         protected_cursor = self.main_window._impl.native.Content.ProtectedCursor
         if is_cursor_visible_non_client:
             assert protected_cursor is None
         else:
             assert isinstance(protected_cursor, InputCursor)
-        
+
         return is_cursor_visible_non_client
-    
+
     ####################################################################################
     # Miscellaneous
     ####################################################################################
@@ -305,14 +264,13 @@ class AppProbe(BaseProbe):
     async def restore_standard_app(self):
         # No special handling needed to restore standard app.
         await self.redraw("Restore to standard app")
-    
 
     def assert_app_icon(self, icon):
         # Compare the pixels of `icon` using Pillow to those from the registered icon
-        # using GDI+.  
+        # using GDI+.
         path = toga.Icon(icon if icon else "")._impl.path
 
-        with PIL.Image.open(path).convert('RGBA') as pil_image:
+        with PIL.Image.open(path).convert("RGBA") as pil_image:
             width_pil, height_pil = pil_image.size
             pixels_pil = pil_image.load()
 
@@ -320,22 +278,21 @@ class AppProbe(BaseProbe):
             hwnd = GetWindowFromWindowId(window._impl.native.AppWindow.Id)
             hicon = SendMessageW(hwnd, WM_GETICON, 0, 0)
             pixels_gdip = icon_pixels(hicon)
-            
+
             assert width_pil == len(pixels_gdip)
             assert height_pil == len(pixels_gdip[0])
 
             count = 0
             for x in range(width_pil):
                 for y in range(height_pil):
-                    if pixels_pil[x,y] == pixels_gdip[x][y]:
+                    if pixels_pil[x, y] == pixels_gdip[x][y]:
                         count += 1
 
             # There are some difference in how alpha is treated. Accept 97% match
-            assert count / (width_pil*height_pil) > 0.97
+            assert count / (width_pil * height_pil) > 0.97
 
     def unhide(self):
         pytest.xfail("This platform doesn't have an app level unhide.")
-
 
     async def open_initial_document(self, monkeypatch, document_path):
         pytest.xfail("Winforms doesn't require initial document support")
@@ -349,7 +306,7 @@ class AppProbe(BaseProbe):
 
     def has_status_icon(self, status_icon):
         return isinstance(status_icon._impl.native_window, Window)
-    
+
     async def _click_status_icon(self, status_icon):
         # `Winkey + B` then `Enter` opens the notification icon overflow tray.
         await self._send_key(VK_RWIN, up=False)
@@ -365,31 +322,32 @@ class AppProbe(BaseProbe):
         rect = wt.RECT()
         Shell_NotifyIconGetRect(byref(notify_icon_identifier), byref(rect))
 
-        x = int((rect.left + rect.right)/2)
-        y =int((rect.top + rect.bottom)/2)
+        x = int((rect.left + rect.right) / 2)
+        y = int((rect.top + rect.bottom) / 2)
         await self._send_click(x, y)
 
     def _get_status_menu_items(self, status_icon):
         native_menu = getattr(status_icon._impl, "native_menu", None)
-        
+
         if native_menu:
             assert isinstance(native_menu, MenuFlyout)
             return [self._menu_item_casted(child) for child in native_menu.Items]
 
     def status_menu_items(self, status_icon):
         items = self._get_status_menu_items(status_icon)
-        
+
         if items is None:
             return
-        
+
         def process_text(text):
-            return{
-                "About Toga Testbed (WinUI 3)": "**ABOUT**",    
+            return {
+                "About Toga Testbed (WinUI 3)": "**ABOUT**",
                 "Exit": "**EXIT**",
             }.get(text, text)
 
         return [
-            "---" if isinstance(child, MenuFlyoutSeparator) 
+            "---"
+            if isinstance(child, MenuFlyoutSeparator)
             else process_text(child.Text)
             for child in items
         ]
@@ -398,7 +356,7 @@ class AppProbe(BaseProbe):
         # Click on the status icon.
         status_icon = self.app.status_icons[item_id]
         await self._click_status_icon(status_icon)
-        
+
         await self._keyboard_escape()
 
     async def activate_status_menu_item(self, item_id, title):
