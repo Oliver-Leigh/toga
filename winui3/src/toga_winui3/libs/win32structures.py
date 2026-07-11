@@ -1,5 +1,5 @@
 import ctypes.wintypes as wt
-from ctypes import c_size_t, Structure as c_Structure, Union, WINFUNCTYPE
+from ctypes import WINFUNCTYPE, Structure as c_Structure, Union, c_size_t
 
 from win32more import Guid
 
@@ -9,12 +9,13 @@ from win32more import Guid
 
 LRESULT = wt.LPARAM
 UINT_PTR = c_size_t
-DWORD_PTR = c_size_t 
+DWORD_PTR = c_size_t
 
 
 ########################################################################################
 # Structures
 ########################################################################################
+
 
 # https://learn.microsoft.com/windows/win32/api/shellapi/ns-shellapi-notifyicondataw
 class _TIMEOUT_VERSION_UNION(Union):
@@ -22,6 +23,7 @@ class _TIMEOUT_VERSION_UNION(Union):
         ("uTimeout", wt.UINT),
         ("uVersion", wt.UINT),
     ]
+
 
 class NOTIFYICONDATAW(c_Structure):
     _fields_ = [
@@ -40,6 +42,16 @@ class NOTIFYICONDATAW(c_Structure):
         ("dwInfoFlags", wt.DWORD),
         ("guidItem", Guid),
         ("hBalloonIcon", wt.HICON),
+    ]
+
+
+# https://learn.microsoft.com/windows/win32/api/shellapi/ns-shellapi-notifyiconidentifier
+class NOTIFYICONIDENTIFIER(c_Structure):
+    _fields_ = [
+        ("cbSize", wt.DWORD),
+        ("hWnd", wt.HWND),
+        ("uID", wt.UINT),
+        ("guidItem", Guid),
     ]
 
 
