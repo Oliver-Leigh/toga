@@ -186,8 +186,17 @@ class AppProbe(BaseProbe):
     async def activate_menu_exit(self):
         await self._activate_menu_item(["File", "Exit"])
 
-    def activate_menu_about(self):
-        self._activate_menu_item(["Help", "About Toga Testbed"])
+    async def activate_menu_about(self):
+        await self._activate_menu_item(["Help", "About Toga Testbed"])
+
+    def activate_menu_close_window(self):
+        pytest.xfail("This platform doesn't have a window management menu")
+
+    def activate_menu_hide(self):
+        pytest.xfail("This platform doesn't present a app level hide option in menu.")
+
+    def activate_menu_minimize(self):
+        pytest.xfail("This platform doesn't have a window management menu")
 
     ####################################################################################
     # Cursor visablity
