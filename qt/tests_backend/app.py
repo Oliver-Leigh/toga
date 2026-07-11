@@ -79,7 +79,7 @@ class AppProbe(BaseProbe):
     def activate_menu_hide(self):
         pytest.xfail("KDE apps do not include a Hide in the menu bar")
 
-    def activate_menu_exit(self):
+    async def activate_menu_exit(self):
         self._activate_menu_item(["File", "Quit"])
 
     def activate_menu_about(self):

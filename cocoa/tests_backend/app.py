@@ -148,7 +148,7 @@ class AppProbe(BaseProbe, DialogsMixin):
             argtypes=[objc_id],
         )
 
-    def activate_menu_exit(self):
+    async def activate_menu_exit(self):
         self._activate_menu_item(["*", "Quit Toga Testbed"])
 
     def activate_menu_about(self):

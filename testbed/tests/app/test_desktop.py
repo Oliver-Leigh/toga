@@ -1,3 +1,4 @@
+import asyncio
 import itertools
 from functools import partial
 from unittest.mock import Mock
@@ -11,6 +12,7 @@ from toga.constants import WindowState
 from toga.style.pack import Pack
 
 from ..assertions import assert_window_on_hide, assert_window_on_show
+from ..conftest import skip_on_backends
 from ..widgets.probe import get_probe
 from ..window.test_window import window_probe
 
@@ -38,7 +40,7 @@ async def test_exit_on_close_main_window(
     monkeypatch.setattr(app, "on_exit", on_exit_handler)
 
     # Try to close the main window; rejected by window
-    main_window_probe.close()
+    await main_window_probe.close()
     await main_window_probe.redraw("Main window close requested; rejected by window")
 
     # on_close_handler was invoked, rejecting the close.
@@ -54,7 +56,7 @@ async def test_exit_on_close_main_window(
     on_exit_handler.reset_mock()
 
     # Close the main window; rejected by app
-    main_window_probe.close()
+    await main_window_probe.close()
     await main_window_probe.redraw("Main window close requested; rejected by app")
 
     # on_close_handler was invoked, allowing the close
@@ -70,7 +72,7 @@ async def test_exit_on_close_main_window(
     on_exit_handler.return_value = True
 
     # Close the main window; this will succeed
-    main_window_probe.close()
+    await main_window_probe.close()
     await main_window_probe.redraw("Main window close requested; accepted")
 
     # on_close_handler was invoked, allowing the close
@@ -88,7 +90,7 @@ async def test_menu_exit(monkeypatch, app, app_probe, mock_app_exit):
     monkeypatch.setattr(app, "on_exit", on_exit_handler)
 
     # Close the main window
-    app_probe.activate_menu_exit()
+    await app_probe.activate_menu_exit()
     await app_probe.redraw("Exit selected from menu, but rejected")
 
     # on_exit_handler was invoked, rejecting the close; so the app won't be closed
@@ -98,7 +100,7 @@ async def test_menu_exit(monkeypatch, app, app_probe, mock_app_exit):
     # Reset and try again, this time allowing the exit
     on_exit_handler.reset_mock()
     on_exit_handler.return_value = True
-    app_probe.activate_menu_exit()
+    await app_probe.activate_menu_exit()
     await app_probe.redraw("Exit selected from menu, and accepted")
 
     # on_exit_handler was invoked and accepted, so the mocked exit() was called.
@@ -255,24 +257,27 @@ async def test_presentation_mode(app, app_probe, main_window, main_window_probe)
         window_widget = toga.Box(style=Pack(flex=1, background_color=next(color_cycle)))
         window.content = window_widget
         window.show()
-
         window_information = {}
         window_information["window"] = window
         window_information["window_probe"] = window_probe(app, window)
         window_information["initial_screen"] = window_information["window"].screen
         window_information["paired_screen"] = app.screens[i]
-        window_information["initial_content_size"] = window_information[
-            "window_probe"
-        ].content_size
         window_information["widget_probe"] = get_probe(window_widget)
-        window_information["initial_widget_size"] = (
-            window_information["widget_probe"].width,
-            window_information["widget_probe"].height,
-        )
         window_information_list.append(window_information)
         screen_window_dict[window_information["paired_screen"]] = window_information[
             "window"
         ]
+
+        # The size properties for WinUI 3 are not immediately available
+        await asyncio.sleep(0.1)
+        window_information["initial_content_size"] = window_information[
+            "window_probe"
+        ].content_size
+        window_information["initial_widget_size"] = (
+            window_information["widget_probe"].width,
+            window_information["widget_probe"].height,
+        )
+
     # Wait for window animation before assertion.
     await main_window_probe.wait_for_window("All Test Windows are visible")
 
@@ -320,6 +325,9 @@ async def test_presentation_mode(app, app_probe, main_window, main_window_probe)
             "App is not in presentation mode", state=WindowState.NORMAL
         )
         assert not app.in_presentation_mode
+
+        # The size properties for WinUI 3 are not immediately available
+        await asyncio.sleep(0.1)
         assert (
             window_information["window_probe"].instantaneous_state == WindowState.NORMAL
         ), f"{window_information['window'].title}:"
@@ -528,6 +536,7 @@ async def test_show_hide_cursor(app, app_probe):
 
 async def test_current_window(app, app_probe, main_window, main_window_probe):
     """The current window can be retrieved"""
+    skip_on_backends("toga_winui3", reason="Dialogs are not implemented yet.")
     try:
         if app_probe.supports_current_window_assignment:
             assert app.current_window == main_window
@@ -607,7 +616,7 @@ async def test_current_window(app, app_probe, main_window, main_window_probe):
 async def test_system_dpi_change(
     main_window, main_window_probe, event_path, mock_scale
 ):
-    if toga.platform.current_platform != "windows":
+    if toga.backend != "toga_winforms":
         pytest.xfail("This test is winforms backend specific")
 
     from toga_winforms.libs import shcore

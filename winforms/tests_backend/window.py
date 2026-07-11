@@ -66,7 +66,7 @@ class WindowProbe(BaseProbe, DialogsMixin):
         self.window.close()
         await self.redraw("Closing window")
 
-    def close(self):
+    async def close(self):
         self.native.Close()
 
     @property

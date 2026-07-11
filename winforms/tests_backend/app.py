@@ -141,7 +141,7 @@ class AppProbe(BaseProbe, DialogsMixin):
     def activate_menu_hide(self):
         pytest.xfail("This platform doesn't present a app level hide option in menu.")
 
-    def activate_menu_exit(self):
+    async def activate_menu_exit(self):
         self._activate_menu_item(["File", "Exit"])
 
     def activate_menu_about(self):

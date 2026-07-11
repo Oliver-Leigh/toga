@@ -67,7 +67,7 @@ class WindowProbe(BaseProbe):
         self.window.close()
         await self.redraw("Closing window", delay=0.5)
 
-    def close(self):
+    async def close(self):
         if self.is_closable:
             self.native.close()
 

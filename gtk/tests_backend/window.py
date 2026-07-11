@@ -95,7 +95,7 @@ class WindowProbe(BaseProbe, DialogsMixin):
             delay = 0.1
         await self.redraw("Closing window", delay=delay)
 
-    def close(self):
+    async def close(self):
         if self.is_closable:
             # Trigger the OS-level window close event.
             if GTK_VERSION < (4, 0, 0):
