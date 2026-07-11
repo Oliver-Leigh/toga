@@ -5,6 +5,8 @@ import pytest
 import toga
 from testbed.app import ExampleDoc
 
+from ..conftest import skip_on_backends
+
 ####################################################################################
 # Document API tests
 ####################################################################################
@@ -127,7 +129,7 @@ async def test_save_document(app, app_probe):
 
 async def test_save_as_document(monkeypatch, app, app_probe, tmp_path):
     """A document can be saved under a new filename."""
-
+    skip_on_backends("toga_winui3", reason="Dialogs are not implemented yet.")
     # A document can be opened
     document_path = Path(__file__).parent / "docs/example.testbed"
     document = app.documents.open(document_path)
