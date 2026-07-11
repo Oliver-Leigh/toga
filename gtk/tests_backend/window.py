@@ -125,7 +125,7 @@ class WindowProbe(BaseProbe, DialogsMixin):
     def is_minimized(self):
         return self.impl._window_state_flags & Gdk.WindowState.ICONIFIED
 
-    def minimize(self):
+    async def minimize(self):
         if GTK_VERSION < (4, 0, 0):
             self.native.iconify()
         else:

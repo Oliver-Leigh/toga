@@ -96,7 +96,7 @@ class WindowProbe(BaseProbe, DialogsMixin):
     def is_minimized(self):
         return bool(self.native.isMiniaturized)
 
-    def minimize(self):
+    async def minimize(self):
         self.native.performMiniaturize(None)
 
     def unminimize(self):

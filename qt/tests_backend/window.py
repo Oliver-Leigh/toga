@@ -91,7 +91,7 @@ class WindowProbe(BaseProbe):
     def is_minimized(self):
         return self.native.isMinimized()
 
-    def minimize(self):
+    async def minimize(self):
         self.native.showMinimized()
 
     def unminimize(self):

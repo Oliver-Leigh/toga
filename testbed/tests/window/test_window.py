@@ -18,6 +18,7 @@ from ..assertions import (
     assert_window_on_hide,
     assert_window_on_show,
 )
+from ..conftest import skip_on_backends
 
 
 def window_probe(app, window):
@@ -386,7 +387,7 @@ else:
         if second_window_probe.supports_placement:
             assert second_window.position == (200, 300)
 
-        second_window_probe.close()
+        await second_window_probe.close()
         await second_window_probe.wait_for_window(
             "Attempt to close second window that is rejected"
         )
@@ -398,7 +399,7 @@ else:
         on_close_handler.reset_mock()
         on_close_handler.return_value = True
 
-        second_window_probe.close()
+        await second_window_probe.close()
         await second_window_probe.wait_for_window(
             "Attempt to close second window that succeeds"
         )
@@ -465,6 +466,7 @@ else:
     )
     async def test_secondary_window_toolbar(app, second_window, second_window_probe):
         """A toolbar can be added to a secondary window"""
+        skip_on_backends("toga_winui3")
         second_window.toolbar.add(app.cmd1)
 
         # Window doesn't have content. This is intentional.
@@ -516,7 +518,7 @@ else:
             assert not second_window_probe.is_closable
 
         # Do a UI close on the window
-        second_window_probe.close()
+        await second_window_probe.close()
         await second_window_probe.wait_for_window("Close request was ignored")
         on_close_handler.assert_not_called()
         assert second_window.visible
@@ -548,7 +550,7 @@ else:
         assert second_window.visible
         assert not second_window_probe.is_minimizable
 
-        second_window_probe.minimize()
+        await second_window_probe.minimize()
         await second_window_probe.wait_for_window("Minimize request has been ignored")
         assert not second_window_probe.is_minimized
 
@@ -617,7 +619,7 @@ else:
         ):
             assert second_window.position == (300, 150)
 
-        second_window_probe.minimize()
+        await second_window_probe.minimize()
         # Wait for window animation before assertion.
         await second_window_probe.wait_for_window(
             "Window has been minimized",
@@ -639,7 +641,7 @@ else:
             # Window size hasn't changed as a result of min/unmin cycle
             assert second_window.size == approx((250, 200), abs=2)
 
-        second_window_probe.close()
+        await second_window_probe.close()
         await second_window_probe.wait_for_window("Secondary window has been closed")
 
         assert second_window not in app.windows
@@ -1323,6 +1325,7 @@ else:
 
 async def test_as_image(main_window, main_window_probe):
     """The window can be captured as a screenshot"""
+    skip_on_backends("toga_winui3")
 
     if main_window_probe.supports_as_image:
         screenshot = main_window.as_image()

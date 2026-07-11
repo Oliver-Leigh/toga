@@ -96,7 +96,7 @@ class WindowProbe(BaseProbe, DialogsMixin):
     def is_minimized(self):
         return self.native.WindowState == FormWindowState.Minimized
 
-    def minimize(self):
+    async def minimize(self):
         if self.native.MinimizeBox:
             self.native.WindowState = FormWindowState.Minimized
 
