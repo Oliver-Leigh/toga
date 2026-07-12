@@ -1,5 +1,5 @@
-from ctypes import windll
 import ctypes.wintypes as wt
+from ctypes import windll
 
 from . import win32structures as ws
 

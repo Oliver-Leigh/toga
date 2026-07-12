@@ -19,5 +19,3 @@ NIN_SELECT = 0x00000400
 
 # NotifyIcon Versions
 NOTIFYICON_VERSION_4 = 4
-
-
