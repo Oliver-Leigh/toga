@@ -115,9 +115,6 @@ root = ".."
 dependencies = [
     "toga-core == {version}",
     "win32more >= 0.8.1",
-    "winui3-Microsoft.UI.Interop",
-    "winui3-Microsoft.UI",
-    "winrt-runtime",
 ]
 
 [tool.coverage.run]

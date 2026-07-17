@@ -5,8 +5,8 @@ from win32more.Microsoft.UI.Xaml import ApplicationTheme
 from win32more.Windows.Win32.Media.Audio import SND_ALIAS, SND_ASYNC, PlaySound
 from win32more.Windows.Win32.UI.WindowsAndMessaging import ShowCursor
 
+from .libs.nativeapp import NativeApp
 from .libs.proactor import WinUI3ProactorEventLoop
-from .libs.winui3app import WinUI3App
 from .screens import Screen as ScreenImpl
 
 
@@ -26,10 +26,10 @@ class App:
         self._cursor_visible = True
 
         self.loop = WinUI3ProactorEventLoop()
-        self.native_instance: WinUI3App
+        self.native_instance: NativeApp
 
     def create(self):
-        self.native = WinUI3App
+        self.native = NativeApp
 
         # TODO Ensure that TLS1.2 and TLS1.3 are enabled. See Winforms.
 
@@ -101,7 +101,7 @@ class App:
     ####################################################################################
 
     def get_dark_mode_state(self) -> bool:
-        """Returns True if the WinUI3App instance is in dark mode."""
+        """Returns True if the NativeApp instance is in dark mode."""
         return self.native_instance.RequestedTheme == ApplicationTheme.Dark
 
     ####################################################################################

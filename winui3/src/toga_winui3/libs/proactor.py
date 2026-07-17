@@ -269,7 +269,7 @@ class WinUI3ProactorEventLoop(asyncio.ProactorEventLoop):
             loop._run_forever_cleanup()
 
     def native_app_launched(self, winui3_app, args):
-        """A function to be used as an override of the OnLauched method of WinUI3App."""
+        """A function to be used as an override of the OnLauched method of NativeApp."""
         dispatcher = DispatcherQueue.GetForCurrentThread()
         self.task_enqueuer = dispatcher.TryEnqueue
 

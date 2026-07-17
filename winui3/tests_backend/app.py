@@ -6,8 +6,8 @@ import PIL.Image
 import pytest
 import toga_winui3.libs.win32structures as ws
 from toga_winui3.libs.gdiplus import icon_pixels
+from toga_winui3.libs.nativeapp import NativeApp
 from toga_winui3.libs.shell import Shell_NotifyIconGetRect
-from toga_winui3.libs.winui3app import WinUI3App
 from win32more.Microsoft.UI.Input import InputCursor
 from win32more.Microsoft.UI.Interop import GetWindowFromWindowId
 from win32more.Microsoft.UI.Xaml import FocusState, Window
@@ -51,10 +51,10 @@ class AppProbe(BaseProbe):
         self.app = app
         self.main_window = app.main_window
 
-        # The WinUI3App class is a child class of with Microsoft.UI.Xaml.Application
+        # The NativeApp class is a descendant class of the Microsoft.UI.Xaml.Application
         # class, which is a singleton instance.
-        assert self.app._impl.native == WinUI3App
-        assert isinstance(self.app._impl.native_instance, WinUI3App)
+        assert self.app._impl.native == NativeApp
+        assert isinstance(self.app._impl.native_instance, NativeApp)
 
     @property
     def _hwnd(self):
