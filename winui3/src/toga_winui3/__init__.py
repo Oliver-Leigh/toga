@@ -9,7 +9,7 @@ from win32more.Windows.Win32.UI.HiDpi import (
     SetProcessDpiAwarenessContext,
 )
 
-if getwindowsversion().build < 17763:
+if getwindowsversion().build < 17763: # pragma: no cover
     # https://learn.microsoft.com/en-us/windows/apps/winui/winui3/
     raise WinError(
         descr="WinUI 3 only runs on Windows 10, version 1809 (build 17763) and later."
@@ -22,7 +22,7 @@ success = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_
 
 # According to the Microsoft documentation, if SetProcessDpiAwarenessContext fails with
 # ERROR_ACCESS_DENIED, then the ProcessDpiAwarenessContext has already been set.
-if not success:
+if not success: # pragma: no cover
     dpi_error = GetLastError()
     if dpi_error == ERROR_ACCESS_DENIED:
         warn(
