@@ -19,7 +19,7 @@ class IconProbe(BaseProbe):
         self.icon = icon
         assert isinstance(self.icon._impl.native, NSImage)
 
-    def assert_icon_content(self, path):
+    async def assert_icon_content(self, path):
         if path == "resources/icons/green":
             assert (
                 self.icon._impl.path
@@ -32,13 +32,13 @@ class IconProbe(BaseProbe):
         else:
             pytest.fail("Unknown icon resource")
 
-    def assert_default_icon_content(self):
+    async def assert_default_icon_content(self):
         assert (
             self.icon._impl.path
             == Path(toga_cocoa.__file__).parent / "resources/toga.icns"
         )
 
-    def assert_platform_icon_content(self):
+    async def assert_platform_icon_content(self):
         assert self.icon._impl.path == self.app.paths.app / "resources/logo-macOS.icns"
 
     def assert_app_icon_content(self):
