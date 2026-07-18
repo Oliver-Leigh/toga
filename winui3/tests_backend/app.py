@@ -1,3 +1,4 @@
+import asyncio
 from ctypes import byref, sizeof, windll, wintypes as wt
 from pathlib import Path
 from time import sleep
@@ -328,14 +329,26 @@ class AppProbe(BaseProbe):
         notify_icon_identifier.hWnd = status_icon._impl._hwnd
         notify_icon_identifier.uID = 1
 
-        await self.redraw("The system tray overflow has been open", delay=0.1)
+        def get_midpoint():
+            rect = wt.RECT()
+            Shell_NotifyIconGetRect(byref(notify_icon_identifier), byref(rect))
 
-        rect = wt.RECT()
-        Shell_NotifyIconGetRect(byref(notify_icon_identifier), byref(rect))
+            x = int((rect.left + rect.right) / 2)
+            y = int((rect.top + rect.bottom) / 2)
+            return (x, y)
 
-        x = int((rect.left + rect.right) / 2)
-        y = int((rect.top + rect.bottom) / 2)
-        await self._send_click(x, y)
+        # Make sure the overflow tray is fully open by tracking when the midpoint stops
+        # moving.
+        mid_point = get_midpoint()
+        for _ in range(10):
+            await asyncio.sleep(0.05)
+
+            new_mid_point = get_midpoint()
+            if mid_point == new_mid_point:
+                break
+            mid_point = new_mid_point
+
+        await self._send_click(*mid_point)
 
     def _get_status_menu_items(self, status_icon):
         native_menu = getattr(status_icon._impl, "native_menu", None)
@@ -378,7 +391,13 @@ class AppProbe(BaseProbe):
         items = self._get_status_menu_items(status_icon)
         index = self.status_menu_items(status_icon).index(title)
 
-        items[index].Focus(FocusState.Programmatic)
+        # Make sure that the menu item is selected before sending select command.
+        for _ in range(100):
+            items[index].Focus(FocusState.Programmatic)
+            if items[index].FocusState != 0:
+                break
+            await asyncio.sleep(0.01)
+
         await self._keyboard_select()
 
         await self._keyboard_escape()
