@@ -2,13 +2,11 @@ from abc import ABC, abstractmethod
 
 from travertino.size import at_least
 from win32more.Microsoft.UI.Xaml import FocusState, Visibility
-from win32more.Microsoft.UI.Xaml.Controls import Canvas, Panel
-
-from toga.constants import TRANSPARENT
+from win32more.Microsoft.UI.Xaml.Controls import Canvas
 
 from ..colors import native_brush
 from ..libs.nativeevents import EventsHandledMixin
-from .properties.native import NativeProperties, is_based_on
+from .properties.native import NativeProperties
 from .properties.staged import StagedProperties
 
 
@@ -84,14 +82,7 @@ class Widget(EventsHandledMixin, ABC):
     ####################################################################################
 
     def set_background_color(self, color):
-        if color is not None:
-            brush = native_brush(color)
-        elif is_based_on(type(self.native), Panel):
-            brush = native_brush(TRANSPARENT)
-        else:
-            brush = None
-
-        self._native_properties.Background = brush
+        self._native_properties.Background = native_brush(color)
 
     def set_bounds(self, x, y, width, height):
         self.native.Width = width
@@ -100,12 +91,7 @@ class Widget(EventsHandledMixin, ABC):
         Canvas.SetTop(self.native, y)
 
     def set_color(self, color):
-        if color is not None:
-            brush = native_brush(color)
-        else:
-            brush = None
-
-        self._native_properties.Foreground = brush
+        self._native_properties.Foreground = native_brush(color)
 
     def set_font(self, font):
         native_font = font._impl.native

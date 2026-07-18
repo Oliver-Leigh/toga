@@ -6,15 +6,13 @@ from win32more.Microsoft.UI.Xaml import (
     TextAlignment,
     VerticalAlignment,
 )
-from win32more.Microsoft.UI.Xaml.Controls import Grid, Panel, TextBlock
-
-from toga.constants import TRANSPARENT
+from win32more.Microsoft.UI.Xaml.Controls import Grid, TextBlock
 
 from ..colors import native_brush
 from ..libs.misc import column_definition_star, row_definition_auto
 from ..libs.nativeevents import EventsHandledMixin
 from .base import Widget
-from .properties.native import NativeProperties, is_based_on
+from .properties.native import NativeProperties
 from .properties.staged import StagedProperties
 
 
@@ -92,14 +90,7 @@ class Label(Widget):
     ####################################################################################
 
     def set_background_color(self, color):
-        if color is not None:
-            brush = native_brush(color)
-        elif is_based_on(type(self.native), Panel):
-            brush = native_brush(TRANSPARENT)
-        else:
-            brush = None
-
-        self._background_properties.Background = brush
+        self._background_properties.Background = native_brush(color)
 
     def set_text_align(self, alignment):
         property_dict = {

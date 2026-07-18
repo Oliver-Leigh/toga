@@ -30,10 +30,10 @@ def native_color(toga_color):
 
 
 def native_brush(toga_color):
-    if not toga_color:
-        return None
-
     color = native_color(toga_color)
+
+    if not color:
+        return None
 
     try:
         brush = BRUSH_CACHE[toga_color]
