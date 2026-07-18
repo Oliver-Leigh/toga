@@ -49,3 +49,8 @@ async def test_bad_icon_file(app):
     probe = icon_probe(app, toga.Icon("resources/icons/bad"))
     await probe.redraw("Icon probe is using a bad icon file")
     await probe.assert_default_icon_content()
+
+    # Attempt to create another probe with an alternate (non-preferred) resource format.
+    probe = icon_probe(app, toga.Icon(probe.alternate_bad))
+    await probe.redraw("Icon probe is using an alternate bad icon file")
+    await probe.assert_default_icon_content()

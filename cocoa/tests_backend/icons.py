@@ -12,6 +12,7 @@ from .probe import BaseProbe
 
 class IconProbe(BaseProbe):
     alternate_resource = "resources/icons/blue"
+    alternate_bad = "resources/icons/bad_png"
 
     def __init__(self, app, icon):
         super().__init__()
