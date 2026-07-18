@@ -328,6 +328,8 @@ class AppProbe(BaseProbe):
         notify_icon_identifier.hWnd = status_icon._impl._hwnd
         notify_icon_identifier.uID = 1
 
+        await self.redraw("The system tray overflow has been open", delay=0.1)
+
         rect = wt.RECT()
         Shell_NotifyIconGetRect(byref(notify_icon_identifier), byref(rect))
 
