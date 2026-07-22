@@ -121,3 +121,7 @@ class SimpleProbe(BaseProbe, FontMixin):
     @property
     def shrink_on_resize(self):
         return True
+
+    @property
+    def has_focus(self):
+        return self.native.FocusState != FocusState.Unfocused

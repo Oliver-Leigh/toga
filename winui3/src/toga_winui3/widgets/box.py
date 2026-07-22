@@ -6,6 +6,8 @@ from .base import Widget
 class Box(Widget):
     def create(self):
         self.native_cls = Canvas
+        # Box cannot receive input focus, so remove it from the tab sequence.
+        self.native.IsTabStop = False
 
     ####################################################################################
     # Overrides of methods called by the Toga style applicator.

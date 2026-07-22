@@ -125,7 +125,8 @@ class Widget(EventsHandledMixin, ABC):
         return self.native.FocusState != FocusState.Unfocused
 
     def focus(self):
-        self.native.Focus(FocusState.Programmatic)
+        if not self.has_focus:
+            self.native.Focus(FocusState.Programmatic)
 
     def get_tab_index(self):
         return self.native.TabIndex

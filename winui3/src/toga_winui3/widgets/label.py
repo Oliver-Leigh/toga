@@ -1,7 +1,6 @@
 from travertino.constants import CENTER, JUSTIFY, LEFT, RIGHT
 from travertino.size import at_least
 from win32more.Microsoft.UI.Xaml import (
-    FocusState,
     HorizontalAlignment,
     TextAlignment,
     VerticalAlignment,
@@ -21,6 +20,8 @@ class LabelText(EventsHandledMixin):
         self._label = label
 
         self.native_cls = TextBlock
+        # LabelText cannot receive input focus, so remove it from the tab sequence.
+        self.native.IsTabStop = False
 
         self._native_properties = NativeProperties(self)
         self._staged_properties = StagedProperties(self)
@@ -59,6 +60,8 @@ class LabelText(EventsHandledMixin):
 class Label(Widget):
     def create(self):
         self.native_cls = Grid
+        # Label cannot receive input focus, so remove it from the tab sequence.
+        self.native.IsTabStop = False
 
         self._background_properties = self._native_properties
 
@@ -115,21 +118,6 @@ class Label(Widget):
     def set_enabled(self, value):
         # Neither TextBlock or Grid has the IsEnabled property.
         pass
-
-    @property
-    def has_focus(self):
-        grid_has_focus = self.native.FocusState != FocusState.Unfocused
-        text_has_focus = self.label_text.native.FocusState != FocusState.Unfocused
-        return grid_has_focus or text_has_focus
-
-    def focus(self):
-        self.label_text.native.Focus(FocusState.Programmatic)
-
-    def get_tab_index(self):
-        return self.label_text.native.TabIndex
-
-    def set_tab_index(self, tab_index):
-        self.label_text.native.TabIndex = tab_index
 
     def rehint(self):
         self.interface.intrinsic.width = at_least(self._min_width)
