@@ -1,7 +1,6 @@
 from ctypes import byref
 from decimal import ROUND_HALF_EVEN, Decimal
 
-from travertino.size import at_least
 from win32more.Microsoft.UI.Interop import GetMonitorFromDisplayId
 from win32more.Windows.Win32.Graphics.Gdi import HMONITOR
 from win32more.Windows.Win32.UI.Shell import GetScaleFactorForMonitor
@@ -12,10 +11,8 @@ from toga.screens import Screen as ScreenInterface
 from toga.types import Position, Size
 
 
-def round_pixels(value, rounding=ROUND_HALF_EVEN) -> int:
-    if rounding is None:
-        return value
-    return int(Decimal(value).to_integral(rounding))
+def round_pixels(value) -> int:
+    return int(Decimal(value).to_integral(ROUND_HALF_EVEN))
 
 
 class Screen:
@@ -57,10 +54,7 @@ class Screen:
         return round_pixels(value * self.dpi_scale)
 
     def physical_to_css(self, value):
-        if isinstance(value, at_least):
-            return at_least(self.physical_to_css(value.value))
-        else:
-            return round_pixels(value / self.dpi_scale)
+        return round_pixels(value / self.dpi_scale)
 
     ####################################################################################
     # Size and position
@@ -89,5 +83,6 @@ class Screen:
     # Screen capabilities
     ####################################################################################
 
-    def get_image_data(self):
+    def get_image_data(self):  # pragma: no cover
+        # FIXME: Remove 'no cover' when implemented.
         print("Not yet implemented on WinUI3 - Screen.get_image_data")

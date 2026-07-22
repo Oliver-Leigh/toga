@@ -72,9 +72,6 @@ class TwoThreadIocpProactor(asyncio.IocpProactor):
         task_enqueuer = self._loop.task_enqueuer
         GetQueuedCompletionStatus = _overlapped.GetQueuedCompletionStatus
 
-        def exit_native():
-            app.native.Exit(app.native_instance)
-
         # The listener lock forces the close method to wait until the listener
         # loop is closed.
         with self._listener_lock:
@@ -102,6 +99,9 @@ class TwoThreadIocpProactor(asyncio.IocpProactor):
 
             # Exit the application. Call here to avoid dispatcher calls after
             # app.native is exited.
+
+            def exit_native():  # pragma: no cover
+                app.native.Exit(app.native_instance)
 
             task_enqueuer(exit_native)  # pragma: no cover
 

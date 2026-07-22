@@ -52,7 +52,7 @@ class NativeApp(XamlApplication):
     def Start(cls):
 
         hr = CoInitializeEx(None, COINIT_APARTMENTTHREADED)
-        if FAILED(hr):
+        if FAILED(hr):  # pragma: no cover
             raise WinError(hr)
 
         def ApplicationInitializationCallback(*_args):
@@ -60,4 +60,5 @@ class NativeApp(XamlApplication):
 
         Application.Start(ApplicationInitializationCallback)
 
-        CoUninitialize()
+        # This line occurs after shutdown, which can't be covered by the testbed.
+        CoUninitialize()  # pragma: no cover

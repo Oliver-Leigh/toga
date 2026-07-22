@@ -93,9 +93,6 @@ class GdiPlusContext:
     def __exit__(self, exc_type, exc_value, traceback):
         GdiplusShutdown(self._token)
 
-    def __del__(self):
-        pass
-
 
 gdi_plus_context = GdiPlusContext()
 

@@ -82,12 +82,6 @@ class StagedProperties:
             super().__setattr__(name, value)
             return
 
-        if not callable(value):
-            raise ValueError(
-                "The 'value' of a staged property must be callable i.e. a "
-                + "'value creator'."
-            )
-
         # Set and cache the native property.
         setattr(self._widget._native_properties, name, value())
         self._staged_properties[name] = value

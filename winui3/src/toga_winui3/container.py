@@ -86,22 +86,6 @@ class Container:
     def height(self):
         return ceil(self.native.ActualSize.Y)
 
-    @property
-    def min_width(self):
-        return self.native.MinWidth
-
-    @min_width.setter
-    def min_width(self, width):
-        self.native.MinWidth = width
-
-    @property
-    def min_height(self):
-        return self.native.MinHeight
-
-    @min_height.setter
-    def min_height(self, height):
-        self.native.MinHeight = height
-
     ####################################################################################
     # Container content
     ####################################################################################
@@ -124,7 +108,8 @@ class Container:
             self._content.container = None
 
         self._content = widget
-        if widget:
+        # FIXME: Remove the 'no branch' when ScrollContainer is implemented.
+        if widget:  # pragma: no branch
             widget.container = self
 
     ####################################################################################
@@ -136,6 +121,4 @@ class Container:
             self.content.interface.refresh()
 
     def refreshed(self):
-        self.min_width = self.content.interface.layout.min_width
-        self.min_height = self.content.interface.layout.min_height
         self._on_refresh()

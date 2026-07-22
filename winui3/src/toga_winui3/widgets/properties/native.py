@@ -60,7 +60,8 @@ class NativeProperties:
     def set_native_property(self, name, value):
         native_instance = self._widget.native
 
-        if not hasattr(native_instance, name):
+        # This codeblock shouldn't be accessed under normal operations, so use no cover.
+        if not hasattr(native_instance, name):  # pragma: no cover
             raise AttributeError(f"{native_instance} has no attribute named {name}.")
 
         # For non-None values, set the property as normal.

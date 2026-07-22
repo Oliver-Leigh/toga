@@ -397,7 +397,8 @@ class Window:
         elif raw_presenter.Kind == AppWindowPresenterKind.FullScreen:
             # Cast presenter as an instance of FullScreenPresenter.
             return FullScreenPresenter(value=raw_presenter.value), raw_presenter
-        else:
+        else:  # pragma: no cover
+            # This codeblock should not be accessed under normal operations.
             raise ValueError("CompactOverlay is not a supported presenter type.")
 
     def get_window_state(self, in_progress_state=False) -> WindowState:
