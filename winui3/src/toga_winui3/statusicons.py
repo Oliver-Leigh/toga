@@ -233,6 +233,6 @@ class StatusIconSet:
                 if isinstance(cmd, Separator):
                     menu_item = MenuFlyoutSeparator()
                 else:
-                    menu_item = cmd._impl.create_menu_item(MenuFlyoutItem)
+                    menu_item = cmd._impl.create_menu_item(0, MenuFlyoutItem)
 
                 submenu.Items.Append(menu_item)

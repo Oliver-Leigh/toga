@@ -8,7 +8,7 @@ from .libs.nativeevents import events_handled
 class Command:
     def __init__(self, interface):
         self.interface = interface
-        self.native = []
+        self.native = {}
 
     @classmethod
     def standard(self, app, id):
@@ -91,7 +91,7 @@ class Command:
         for item in self.native:
             item.IsEnabled = is_enabled
 
-    def create_menu_item(self, NativeClass):
+    def create_menu_item(self, window_id, NativeClass):
         item = events_handled(NativeClass)
         item.Text = self.interface.text
         item.event_handler.Click += self.native_event_Click
@@ -101,6 +101,6 @@ class Command:
 
         item.IsEnabled = self.interface.enabled
 
-        self.native.append(item)
+        self.native[window_id] = item
 
         return item

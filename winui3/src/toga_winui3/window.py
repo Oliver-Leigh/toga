@@ -15,6 +15,7 @@ from win32more.Microsoft.UI.Windowing import (
 from win32more.Microsoft.UI.Xaml import (
     HorizontalAlignment,
     VerticalAlignment,
+    Visibility,
     WindowActivationState,
 )
 from win32more.Microsoft.UI.Xaml.Controls import (
@@ -464,18 +465,18 @@ class Window:
         if state == WindowState.PRESENTATION:
             self._in_presentation_mode = True
             if hasattr(self, "menu_native"):
-                self.menu_native.Visible = False
+                self.menu_native.Visibility = Visibility.Collapsed
 
             if hasattr(self, "toolbar_native"):
-                self.toolbar_native.Visible = False
+                self.menu_native.Visibility = Visibility.Collapsed
 
         else:
             self._in_presentation_mode = False
             if hasattr(self, "menu_native"):
-                self.menu_native.Visible = True
+                self.menu_native.Visibility = Visibility.Visible
 
             if hasattr(self, "toolbar_native"):
-                self.toolbar_native.Visible = True
+                self.menu_native.Visibility = Visibility.Visible
 
             match state:
                 case WindowState.NORMAL:
@@ -531,6 +532,18 @@ class MainWindow(Window):
         # Attach the content to the window.
         self.native.Content = self.content_native
 
+    def __del__(self):
+        window_id = id(self)
+        for cmd in self.interface.app.commands:
+            try:
+                impl = cmd._impl
+                try:
+                    del impl.native[window_id]
+                except KeyError:
+                    pass
+            except AttributeError:
+                pass
+
     def _submenu(self, group, group_cache):
         try:
             return group_cache[group]
@@ -554,10 +567,16 @@ class MainWindow(Window):
         return submenu
 
     def create_menus(self):
-        self.menu_native = MenuBar()
-        self.menu_native.VerticalAlignment = VerticalAlignment.Top
-        Grid.SetRow(self.menu_native, 0)
-        Grid.SetColumn(self.menu_native, 0)
+        window_id = id(self)
+        menu_exists = hasattr(self, "menu_native")
+
+        if not menu_exists:
+            self.menu_native = MenuBar()
+            self.menu_native.VerticalAlignment = VerticalAlignment.Top
+            Grid.SetRow(self.menu_native, 0)
+            Grid.SetColumn(self.menu_native, 0)
+        else:
+            self.menu_native.Items.Clear()
 
         group_cache = {None: self.menu_native}
 
@@ -567,11 +586,12 @@ class MainWindow(Window):
             if isinstance(cmd, Separator):
                 item = MenuFlyoutSeparator()
             else:
-                item = cmd._impl.create_menu_item(MenuFlyoutItem)
+                item = cmd._impl.create_menu_item(window_id, MenuFlyoutItem)
 
             submenu.Items.Append(item)
 
-        self.content_native.Children.Append(self.menu_native)
+        if not menu_exists:
+            self.content_native.Children.Append(self.menu_native)
 
     def create_toolbar(self):
         if not self.interface.toolbar:
