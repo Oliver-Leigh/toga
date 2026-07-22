@@ -45,7 +45,7 @@ class BaseProbe:
         for _ in range(1000):
             if staging_complete():
                 break
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.01)
 
         # If we're running slow, or we have a wait condition,
         # wait for at least a second
