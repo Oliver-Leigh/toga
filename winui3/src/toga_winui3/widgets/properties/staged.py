@@ -49,19 +49,16 @@ class StagingArea:
         self.native.Children.Append(native_widget)
 
     def remove(self, native_widget):
-        """Removes a widget and triggers a layout refresh when the widget list empties.
-
-        The refresh mechanism here is to avoid excessive refresh calls.
-        """
-        non_empty_initial = len(self._native_widgets) > 0
+        """Removes a widget and triggers a layout refresh."""
         index = self._native_widgets.index(native_widget)
         self._native_widgets.remove(native_widget)
         self.native.Children.RemoveAt(index)
-        empty_final = len(self._native_widgets) == 0
 
-        if non_empty_initial and empty_final:
-            if self._container._content:
-                self._container._content.interface.refresh()
+        # It is possible that self._container._content was removed during the staging
+        # process. It is difficult to reliably create this scenario during testing, so
+        # use no branch here.
+        if self._container._content:  # pragma: no branch
+            self._container._content.interface.refresh()
 
 
 class StagedProperties:
