@@ -26,6 +26,10 @@ class LabelText(EventsHandledMixin):
         self._native_properties = NativeProperties(self)
         self._staged_properties = StagedProperties(self)
 
+        # Initial minimum sizes are 0 so that the staged properties are sized up.
+        self._min_width = 0
+        self._min_height = 0
+
         Grid.SetRow(self.native, 0)
         Grid.SetColumn(self.native, 0)
         label.native.Children.Append(self.native)
@@ -36,22 +40,6 @@ class LabelText(EventsHandledMixin):
     @property
     def container(self):
         return self._label.container
-
-    @property
-    def _min_width(self):
-        return self._label._min_width
-
-    @_min_width.setter
-    def _min_width(self, value):
-        self._label._min_width = value
-
-    @property
-    def _min_height(self):
-        return self._label._min_height
-
-    @_min_height.setter
-    def _min_height(self, value):
-        self._label._min_height = value
 
     def rehint(self):
         self._label.rehint()
@@ -73,10 +61,6 @@ class Label(Widget):
         self._staged_properties = self.label_text._staged_properties
 
         self._text = ""
-
-        # Initial minimum sizes are 0 so that the staged properties are sized up.
-        self._min_width = 0
-        self._min_height = 0
 
     def get_text(self):
         return self._text
@@ -112,13 +96,13 @@ class Label(Widget):
     ####################################################################################
 
     def get_enabled(self):
-        # Neither TextBlock or Grid has the IsEnabled property.
+        # Neither TextBlock nor Grid has the IsEnabled property.
         return True
 
     def set_enabled(self, value):
-        # Neither TextBlock or Grid has the IsEnabled property.
+        # Neither TextBlock nor Grid has the IsEnabled property.
         pass
 
     def rehint(self):
-        self.interface.intrinsic.width = at_least(self._min_width)
-        self.interface.intrinsic.height = self._min_height
+        self.interface.intrinsic.width = at_least(self.label_text._min_width)
+        self.interface.intrinsic.height = self.label_text._min_height
