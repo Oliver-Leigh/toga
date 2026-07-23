@@ -445,11 +445,7 @@ class Window:
         ):
             self.interface.app.exit_presentation_mode()
 
-        from_state = self.get_window_state()
-        if from_state == state:
-            return
-
-        from_overlapped = from_state not in {
+        from_overlapped = self.get_window_state() not in {
             WindowState.FULLSCREEN,
             WindowState.PRESENTATION,
         }
@@ -463,21 +459,24 @@ class Window:
             # Change from fullscreen presenter to overlapped presenter.
             self.native.AppWindow.SetPresenterByKind(AppWindowPresenterKind.Overlapped)
 
+        # The core interface filters out the case state == self.get_window_state().
         if state == WindowState.PRESENTATION:
             self._in_presentation_mode = True
             if hasattr(self, "menu_native"):
                 self.menu_native.Visibility = Visibility.Collapsed
 
-            if hasattr(self, "toolbar_native"):
-                self.menu_native.Visibility = Visibility.Collapsed
+            # TODO: Implement toolbars.
+            # if hasattr(self, "toolbar_native"):
+            #    self.menu_native.Visibility = Visibility.Collapsed
 
         else:
             self._in_presentation_mode = False
             if hasattr(self, "menu_native"):
                 self.menu_native.Visibility = Visibility.Visible
 
-            if hasattr(self, "toolbar_native"):
-                self.menu_native.Visibility = Visibility.Visible
+            # TODO: Implement toolbars.
+            # if hasattr(self, "toolbar_native"):
+            #    self.menu_native.Visibility = Visibility.Visible
 
             match state:
                 case WindowState.NORMAL:
@@ -538,11 +537,8 @@ class MainWindow(Window):
         for cmd in self.interface.app.commands:
             try:
                 impl = cmd._impl
-                try:
-                    del impl.native[window_id]
-                except KeyError:
-                    pass
-            except AttributeError:
+                del impl.native[window_id]
+            except (AttributeError, KeyError):
                 pass
 
     def _submenu(self, group, group_cache):
