@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from toga_winui3.libs.nativeevents import NativeEvent
 from win32more import unbox_value
 from win32more.Microsoft.UI.Xaml.Controls import Button as NativeButton, ImageIcon
 
@@ -9,6 +10,12 @@ from .base import SimpleProbe
 
 class ButtonProbe(SimpleProbe):
     native_class = NativeButton
+
+    def __init__(self, widget):
+        super().__init__(widget)
+
+        # Check the Click event is being properly handled.
+        assert isinstance(self.native.event_handler.Click, NativeEvent)
 
     @property
     def content_is_text(self):

@@ -16,7 +16,10 @@ class SimpleProbe(BaseProbe, FontMixin):
         self.widget = widget
         self.impl = widget._impl
         super().__init__(self.impl.native)
-        assert isinstance(self.native, self.native_class)
+
+        # Check that the native class has been instantiated using events_handled()
+        assert self.impl.native_cls == self.native_class
+        assert type(self.native).__name__ == self.native_class.__name__ + "Handled"
 
     def assert_container(self, container):
         assert self.widget._impl.container is container._impl.container

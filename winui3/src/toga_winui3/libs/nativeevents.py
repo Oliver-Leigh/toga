@@ -26,6 +26,8 @@ class NativeEvent:
         # Keep a local reference to the callback.
         self._registry[id(token)] = (token, callback)
 
+        return self
+
     def clear(self):
         event_remover = getattr(self._owner, "remove_" + self._name)
         for token, callback in self._registry.values():
@@ -70,6 +72,13 @@ class NativeEventsHandler:
 
         return self._event_registry[name]
 
+    def __setattr__(self, name, value):
+        if not name[0].isupper():
+            super().__setattr__(name, value)
+            return
+
+        self._event_registry[name] = value
+
     def clear(self):
         for event in self._event_registry.values():
             event.clear()
@@ -86,7 +95,8 @@ class NativeEventsMixin:
         if getattr(self, "_event_handler", None):
             self.event_handler.clear()
 
-        if hasattr(self.native_class, "__del__"):
+        # This is a safety catch for future changes in the native backend.
+        if hasattr(self.native_class, "__del__"):  # pragma: no cover
             super().__del__()
 
     @property
@@ -107,8 +117,9 @@ def events_handled(native_cls):
 class EventsHandledMixin:
     @property
     def native_cls(self):
-        return type(self.native)
+        return self._native_cls if hasattr(self, "_native_cls") else None
 
     @native_cls.setter
     def native_cls(self, cls):
+        self._native_cls = cls
         self.native = events_handled(cls)
