@@ -92,15 +92,19 @@ class TwoThreadIocpProactor(asyncio.IocpProactor):
                 # Queue/run the actions to run synchronously on the main thread.
                 task_enqueuer(iocp_action)
 
-            ########################################################################
-            # From here onward is part of the app shutdown procedure, which can't
-            # have test coverage. So use no cover.
-            ########################################################################
+            ############################################################################
+            # From here onward is part of the app shutdown procedure, which can't have
+            # test coverage. So use no cover.
+            ############################################################################
 
             # Exit the application. Call here to avoid dispatcher calls after
             # app.native is exited.
 
             def exit_native():  # pragma: no cover
+                # Make sure that the Win32-based StatusIcons are closed correctly.
+                for status_icon in app.interface.status_icons:
+                    status_icon._impl.remove()
+
                 app.native.Exit(app.native_instance)
 
             task_enqueuer(exit_native)  # pragma: no cover
