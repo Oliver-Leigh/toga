@@ -536,7 +536,6 @@ async def test_show_hide_cursor(app, app_probe):
 
 async def test_current_window(app, app_probe, main_window, main_window_probe):
     """The current window can be retrieved"""
-    skip_on_backends("toga_winui3", reason="Dialogs are not implemented yet.")
     try:
         if app_probe.supports_current_window_assignment:
             assert app.current_window == main_window
@@ -576,6 +575,9 @@ async def test_current_window(app, app_probe, main_window, main_window_probe):
     await main_window_probe.wait_for_window("Window 3 is current")
     if app_probe.supports_current_window_assignment:
         assert app.current_window == window3
+
+    # Defer the WinUI 3 skip until here so that the above code is exercised.
+    skip_on_backends("toga_winui3", reason="Dialogs are not implemented yet.")
 
     # When a dialog is in focus, app.current_window should return the
     # previously active window.
