@@ -188,6 +188,10 @@ class WinformsProactorEventLoop(asyncio.ProactorEventLoop):
         self._synchronous_queue = ReentrantQueue()
         self._idle = True
 
+        self.next_scheduled = None
+        self.wake_counter = 0
+        self.wake_counter_max = 0
+
     def run_forever(self, app):
         """Set up the asyncio event loop, integrate it with the Winforms event loop, and
         start the application.
@@ -343,6 +347,16 @@ class WinformsProactorEventLoop(asyncio.ProactorEventLoop):
                     # Calculate a delay for scheduled events and enqueue a tick.
                     first = self._scheduled[0]
                     ms_until = int(max(0, (first.when() - self.time()) * 1000))
+
+                    if first != self.next_scheduled:
+                        self.next_scheduled = first
+                        self.wake_counter = 0
+                    else:
+                        self.wake_counter += 1
+                        if self.wake_counter > self.wake_counter_max:
+                            self.wake_counter_max = self.wake_counter
+                            print(f"self.wake_counter_max = {self.wake_counter_max}")
+
                     self.enqueue_tick(delay=ms_until)
 
         # Exceptions thrown by this method will be silently ignored.
